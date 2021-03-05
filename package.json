@@ -1,0 +1,19 @@
+{
+  "name": "@serverless-dns/lfu-cache",
+  "version": "1.0.0",
+  "description": "Lfu cache implementation for rethink dns",
+  "main": "lfu.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/serverless-dns/lfu-cache.git"
+  },
+  "author": "",
+  "license": "MPL-2.0",
+  "bugs": {
+    "url": "https://github.com/serverless-dns/lfu-cache/issues"
+  },
+  "homepage": "https://github.com/serverless-dns/lfu-cache#readme"
+}
