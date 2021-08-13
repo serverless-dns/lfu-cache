@@ -5,12 +5,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
- 
-var cmin = require('@serverless-dns/count-min-sketch')
-var CreateError = require('@serverless-dns/error')
 
 class LfuCache {
-  constructor(lfuname, size, lfuUpdateCount, cmslen, cmswidht, cmsheight) {
+  constructor(lfuname, size) {
     this.lfuname = lfuname
     this.lfuCachemap = new Map()
     this.lfuCachearray = []
@@ -18,12 +15,6 @@ class LfuCache {
     this.lfuCacheIndex = -1
     this.lfustart = -1
     this.lfuend = 0
-    this.lfuUpdateCount = lfuUpdateCount <= 0 ? 0 : lfuUpdateCount
-    this.cmslen = cmslen
-    this.cmswidht = cmswidht
-    this.cmsheight = cmsheight
-    this.cms = cmin.createCountMinSketch(cmswidht, cmsheight)
-    this.cmslencount = 0
   }
   Get(key) {
     let cachedata = false
@@ -33,7 +24,7 @@ class LfuCache {
       }
     }
     catch (e) {
-      CreateError("lfu.js - GetFromCache", e)
+      throw e
     }
     return cachedata
   }
@@ -42,7 +33,7 @@ class LfuCache {
       datatolfu.call(this, cachedata)
     }
     catch (e) {
-      CreateError("lfu.js - PushToCache", e)
+      throw e
     }
   }
 }
@@ -62,7 +53,7 @@ function removeaddlfuCache(key,data){
     this.lfuCachearray[this.lfustart] = arraydata
   }
   catch(e){
-    CreateError("removeaddlfuCache -> "+this.objname,e)
+    throw e
   }
 }
 
@@ -85,7 +76,7 @@ function updatelfucache(key,data){
     }
   }
   catch(e){
-    CreateError("updatelfucache -> "+this.objname,e)
+    throw e
   }
 }
 
@@ -112,7 +103,7 @@ function simpleaddlurCache(key,data){
     this.lfuCachearray[this.lfuCacheIndex] = arraydata
   }
   catch(e){
-    CreateError("simpleaddlurCache -> "+this.objname,e)
+    throw e
   }
 }
 
@@ -124,18 +115,7 @@ function datatolfu(data){
     }
     else { 
       if(this.lfuCacheIndex > (this.lfuCacheSize-2)){
-        let cmscount = this.cms.query(data.k)
-        if(cmscount < this.lfuUpdateCount){
-          if (cmscount == 0 ) { this.cmslencount++ }
-          if(this.cmslencount>=this.cmslen){
-            this.cmslencount=0
-            this.cms = cmin.createCountMinSketch(this.cmswidht,this.cmsheight)
-          }
-          this.cms.update(data.k,1)
-        }
-        else{
-          removeaddlfuCache.call(this,data.k,data)
-        }
+        removeaddlfuCache.call(this,data.k,data)        
       }
       else{
         simpleaddlurCache.call(this,data.k,data)
@@ -143,7 +123,7 @@ function datatolfu(data){
     }
   }
   catch(e){
-    CreateError("datatolfu -> "+this.objname,e)
+    throw e
   }
 }
 

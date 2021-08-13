@@ -1,6 +1,6 @@
 {
   "name": "@serverless-dns/lfu-cache",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lfu cache implementation for rethink dns",
   "main": "lfu.js",
   "scripts": {
