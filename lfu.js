@@ -24,6 +24,8 @@ class LfuCache {
       }
     }
     catch (e) {
+      console.log("Error At : LfuCache -> Get")
+      console.log(e.stack)
       throw e
     }
     return cachedata
@@ -33,14 +35,16 @@ class LfuCache {
       datatolfu.call(this, cachedata)
     }
     catch (e) {
+      console.log("Error At : LfuCache -> Put")
+      console.log(e.stack)
       throw e
     }
   }
 }
 
-function removeaddlfuCache(key,data){
-  try{
-    let arraydata={}
+function removeaddlfuCache(key, data) {
+  try {
+    let arraydata = {}
     arraydata = data
     arraydata.n = this.lfustart
     arraydata.p = -1
@@ -49,23 +53,25 @@ function removeaddlfuCache(key,data){
     this.lfustart = this.lfuend
     this.lfuend = this.lfuCachearray[this.lfuend].p
     this.lfuCachearray[this.lfuend].n = -1
-    this.lfuCachemap.set(key,this.lfustart)
+    this.lfuCachemap.set(key, this.lfustart)
     this.lfuCachearray[this.lfustart] = arraydata
   }
-  catch(e){
+  catch (e) {
+    console.log("Error At : LfuCache -> removeaddlfuCache")
+    console.log(e.stack)
     throw e
   }
 }
 
-function updatelfucache(key,data){
-  try{
+function updatelfucache(key, data) {
+  try {
     let accindex = this.lfuCachemap.get(key)
-    if(accindex != this.lfustart){
-      if(data.n==-1){
+    if (accindex != this.lfustart) {
+      if (data.n == -1) {
         this.lfuend = data.p;
         this.lfuCachearray[this.lfuend].n = -1
       }
-      else{
+      else {
         this.lfuCachearray[data.n].p = data.p
         this.lfuCachearray[data.p].n = data.n
       }
@@ -75,54 +81,60 @@ function updatelfucache(key,data){
       this.lfustart = accindex
     }
   }
-  catch(e){
+  catch (e) {
+    console.log("Error At : LfuCache -> updatelfucache")
+    console.log(e.stack)
     throw e
   }
 }
 
-function simpleaddlurCache(key,data){
-  try{
+function simpleaddlurCache(key, data) {
+  try {
     let arraydata = {}
     arraydata = data
-    if(this.lfuCacheIndex==-1){
-      arraydata.n=-1;
-      arraydata.p=-1;
-      this.lfustart=0
-      this.lfuend=0
+    if (this.lfuCacheIndex == -1) {
+      arraydata.n = -1;
+      arraydata.p = -1;
+      this.lfustart = 0
+      this.lfuend = 0
       this.lfuCacheIndex++
     }
-    else{
+    else {
       this.lfuCacheIndex++
-      arraydata.n=this.lfustart;
-      arraydata.p=-1;
-      this.lfuCachearray[this.lfustart].p=this.lfuCacheIndex
+      arraydata.n = this.lfustart;
+      arraydata.p = -1;
+      this.lfuCachearray[this.lfustart].p = this.lfuCacheIndex
       this.lfustart = this.lfuCacheIndex
     }
-    this.lfuCachemap.set(key,this.lfuCacheIndex)
-    this.lfuCachearray[this.lfuCacheIndex]={}
+    this.lfuCachemap.set(key, this.lfuCacheIndex)
+    this.lfuCachearray[this.lfuCacheIndex] = {}
     this.lfuCachearray[this.lfuCacheIndex] = arraydata
   }
-  catch(e){
+  catch (e) {
+    console.log("Error At : LfuCache -> simpleaddlurCache")
+    console.log(e.stack)
     throw e
   }
 }
 
-function datatolfu(data){
-  try{
-    if(this.lfuCachemap.has(data.k)){
-      data = this.lfuCachearray[this.lfuCachemap.get(data.k)]       
-      updatelfucache.call(this,data.k,data)   
+function datatolfu(data) {
+  try {
+    if (this.lfuCachemap.has(data.k)) {
+      data = this.lfuCachearray[this.lfuCachemap.get(data.k)]
+      updatelfucache.call(this, data.k, data)
     }
-    else { 
-      if(this.lfuCacheIndex > (this.lfuCacheSize-2)){
-        removeaddlfuCache.call(this,data.k,data)        
+    else {
+      if (this.lfuCacheIndex > (this.lfuCacheSize - 2)) {
+        removeaddlfuCache.call(this, data.k, data)
       }
-      else{
-        simpleaddlurCache.call(this,data.k,data)
-      }              
+      else {
+        simpleaddlurCache.call(this, data.k, data)
+      }
     }
   }
-  catch(e){
+  catch (e) {
+    console.log("Error At : LfuCache -> datatolfu")
+    console.log(e.stack)
     throw e
   }
 }
