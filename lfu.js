@@ -6,7 +6,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-export default class LfuCache {
+export class LfuCache {
   constructor(lfuname, size) {
     this.lfuname = lfuname;
     this.lfuCachemap = new Map();
