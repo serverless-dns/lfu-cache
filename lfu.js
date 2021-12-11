@@ -7,20 +7,23 @@
  */
 
 export class LfuCache {
+
   constructor(id, capacity) {
     this.id = id;
-    this.cache = new Clock2(capacity);
+    this.cache = new Clock(capacity);
   }
+
   Get(key) {
-    let cacheData = false;
+    let val = false;
     try {
-      cachedata = this.cache.val(key) || false;
+      val = this.cache.val(key) || false;
     } catch (e) {
       console.log("Error: " + this.id + " -> Get");
       console.log(e.stack);
     }
-    return cacheData;
+    return val;
   }
+
   Put(dat) {
     const key = dat.k;
     const val = dat;
@@ -31,5 +34,6 @@ export class LfuCache {
       console.log(e.stack);
     }
   }
+
 }
 
