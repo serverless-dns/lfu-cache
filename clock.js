@@ -6,23 +6,23 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-// Clock2 implements a LFU-like cache with "clock-hands" that sweep
+// Clock implements a LFU-like cache with "clock-hands" that sweep
 // clockwise over a ring-buffer to find a slot for new entries (key,
 // value). As these hands sweep, they either countdown the lifetime
 // of the slot (denoted by a number between -1 to #maxcount) or
-// remove it if it is dead (count = -1). The hands sweep clockwise
-// looking for a dead slot whenever a new entry is to be inserted.
-// On a re-insertion (same key, any value), its lifetime-count is
-// incremented, its value is overriden. The hands sweep the ring
-// independent of one another, while the choice of which hand
-// should sweep the ring is made at random. The lifetime increases
-// with every fetch of the item, as well. This implementation spawns
-// one hand per 256 slots, or two hands for smaller capacities.
+// remove it if it is dead (null or count = -1). On a re-insertion
+// (same key, any value), its lifetime is incremented, its value is
+// overriden. Lifetime increments with every cache-hit, as well.
+//
+// The hands sweep the ring independent of one another, while the
+// choice of which hand should sweep the ring is made at random.
+// This implementation spawns 1 hand per 256 slots, with a minimum
+// of at least 2 hands (for ex, total cache capacity <= 512).
 //
 // refs:
 // www-inst.eecs.berkeley.edu/~cs266/sp10/readings/smith78.pdf (page 11)
 // power-of-2 lru: news.ycombinator.com/item?id=19188642
-class Clock2 {
+class Clock {
 
    #maxcount
    #totalhands
