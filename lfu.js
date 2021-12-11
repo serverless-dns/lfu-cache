@@ -7,28 +7,28 @@
  */
 
 export class LfuCache {
-  constructor(lfuname, size) {
-    this.lfuname = lfuname;
-    this.lfuCachemap = new Map();
-    this.lfuCachearray = [];
+  constructor(lfuName, size) {
+    this.lfuName = lfuName;
+    this.lfuCacheMap = new Map();
+    this.lfuCacheArray = [];
     this.lfuCacheSize = size;
     this.lfuCacheIndex = -1;
     this.lfustart = -1;
     this.lfuend = 0;
   }
   Get(key) {
-    let cachedata = false;
+    let cacheData = false;
     try {
-      cachedata = this.lfuCachearray[this.lfuCachemap.get(key)];
+      cacheData = this.lfuCacheArray[this.lfuCacheMap.get(key)];
     } catch (e) {
       console.log("Error At : LfuCache -> Get");
       console.log(e.stack);
     }
-    return cachedata;
+    return cacheData;
   }
-  Put(cachedata) {
+  Put(cacheData) {
     try {
-      this.datatolfu(cachedata);
+      this.dataToLfu(cacheData);
     } catch (e) {
       console.log("Error At : LfuCache -> Put");
       console.log(e.stack);
@@ -36,37 +36,37 @@ export class LfuCache {
   }
 }
 
-LfuCache.prototype.removeaddlfuCache = function (key, data) {
+LfuCache.prototype.removeAddLfuCache = function (key, data) {
   let arraydata = data;
   arraydata.n = this.lfustart;
   arraydata.p = -1;
-  this.lfuCachemap.delete(this.lfuCachearray[this.lfuend].k);
-  this.lfuCachearray[this.lfustart].p = this.lfuend;
+  this.lfuCacheMap.delete(this.lfuCacheArray[this.lfuend].k);
+  this.lfuCacheArray[this.lfustart].p = this.lfuend;
   this.lfustart = this.lfuend;
-  this.lfuend = this.lfuCachearray[this.lfuend].p;
-  this.lfuCachearray[this.lfuend].n = -1;
-  this.lfuCachemap.set(key, this.lfustart);
-  this.lfuCachearray[this.lfustart] = arraydata;
+  this.lfuend = this.lfuCacheArray[this.lfuend].p;
+  this.lfuCacheArray[this.lfuend].n = -1;
+  this.lfuCacheMap.set(key, this.lfustart);
+  this.lfuCacheArray[this.lfustart] = arraydata;
 };
 
-LfuCache.prototype.updatelfucache = function (key, data) {
-  let accindex = this.lfuCachemap.get(key);
+LfuCache.prototype.updateLfuCache = function (key, data) {
+  let accindex = this.lfuCacheMap.get(key);
   if (accindex != this.lfustart) {
     if (data.n == -1) {
       this.lfuend = data.p;
-      this.lfuCachearray[this.lfuend].n = -1;
+      this.lfuCacheArray[this.lfuend].n = -1;
     } else {
-      this.lfuCachearray[data.n].p = data.p;
-      this.lfuCachearray[data.p].n = data.n;
+      this.lfuCacheArray[data.n].p = data.p;
+      this.lfuCacheArray[data.p].n = data.n;
     }
     data.p = -1;
     data.n = this.lfustart;
-    this.lfuCachearray[this.lfustart].p = accindex;
+    this.lfuCacheArray[this.lfustart].p = accindex;
     this.lfustart = accindex;
   }
 };
 
-LfuCache.prototype.simpleaddlurCache = function (key, data) {
+LfuCache.prototype.simpleAddLruCache = function (key, data) {
   let arraydata = {};
   arraydata = data;
   if (this.lfuCacheIndex == -1) {
@@ -79,23 +79,24 @@ LfuCache.prototype.simpleaddlurCache = function (key, data) {
     this.lfuCacheIndex++;
     arraydata.n = this.lfustart;
     arraydata.p = -1;
-    this.lfuCachearray[this.lfustart].p = this.lfuCacheIndex;
+    this.lfuCacheArray[this.lfustart].p = this.lfuCacheIndex;
     this.lfustart = this.lfuCacheIndex;
   }
-  this.lfuCachemap.set(key, this.lfuCacheIndex);
-  this.lfuCachearray[this.lfuCacheIndex] = {};
-  this.lfuCachearray[this.lfuCacheIndex] = arraydata;
+  this.lfuCacheMap.set(key, this.lfuCacheIndex);
+  this.lfuCacheArray[this.lfuCacheIndex] = {};
+  this.lfuCacheArray[this.lfuCacheIndex] = arraydata;
 };
 
-LfuCache.prototype.datatolfu = function (data) {
-  if (this.lfuCachemap.has(data.k)) {
-    data = this.lfuCachearray[this.lfuCachemap.get(data.k)];
-    this.updatelfucache(data.k, data);
+LfuCache.prototype.dataToLfu = function (value) {
+  if (this.lfuCacheMap.has(value.k)) {
+    let oldValue = this.lfuCacheArray[this.lfuCacheMap.get(value.k)];
+    oldValue.data = value.data;
+    this.updateLfuCache(value.k, oldValue);
   } else {
     if (this.lfuCacheIndex > this.lfuCacheSize - 2) {
-      this.removeaddlfuCache(data.k, data);
+      this.removeAddLfuCache(value.k, value);
     } else {
-      this.simpleaddlurCache(data.k, data);
+      this.simpleAddLruCache(value.k, value);
     }
   }
 };
