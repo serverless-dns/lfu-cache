@@ -10,9 +10,11 @@
 // sweep in odd or even jumps over a ring-buffer to find "slots" for the
 // entry to be cached. As these hands sweep, they either countdown the lifetime
 // of the slot (denoted by a number between -1 to #maxcount) or remove it if it
-// is dead (count = -1). On a re-insertion (same key, any value), it increments
-// the lifetime-count and stores the new value. The clock-hands sweep the ring
-// independently, while the choice to run one hand over another is random.
+// is dead (count = -1). The hands sweep clockwise looking for a dead slot
+// whenever a new entry (key, value) is to be inserted. On a re-insertion
+// (same key, any value), the lifetime-count is incremeneted and older value
+// overriden. The hands sweep the ring independently, while the choice of
+// which hand should sweep the ring is made at random.
 //
 // refs:
 // www-inst.eecs.berkeley.edu/~cs266/sp10/readings/smith78.pdf (page 11)
@@ -35,7 +37,7 @@ class Clock2 {
         this.rb.fill(null)
         // a cache
         this.store = new Map()
-        // start and end wrap positions in rb head1/2
+        // start and end wrap positions in rb hand1/2
         this.#wrap1start = 0
         this.#wrap2start = 1
         this.#wrap1end = this.capacity - 1

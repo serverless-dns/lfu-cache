@@ -7,8 +7,8 @@
  */
 
 export class LfuCache {
-  constructor(lfuname, capacity) {
-    this.lfuname = lfuname;
+  constructor(id, capacity) {
+    this.id = id;
     this.cache = new Clock2(capacity);
   }
   Get(key) {
@@ -16,7 +16,7 @@ export class LfuCache {
     try {
       cachedata = this.cache.val(key) || false;
     } catch (e) {
-      console.log("Error: " + lfuname + " -> Get");
+      console.log("Error: " + this.id + " -> Get");
       console.log(e.stack);
     }
     return cacheData;
@@ -27,7 +27,7 @@ export class LfuCache {
     try {
         this.cache.put(key, val)
     } catch (e) {
-      console.log("Error: " + lfuname + " -> Put");
+      console.log("Error: " + this.id + " -> Put");
       console.log(e.stack);
     }
   }
