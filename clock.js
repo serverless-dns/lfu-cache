@@ -79,7 +79,7 @@ class Clock {
     decrHead(n) {
         n = this.bound(n, 0, this.#totalhands)
         this.hands[n] = this.prev(this.hands[n])
-        return this.hand[n]
+        return this.hands[n]
     }
 
     get size() {
