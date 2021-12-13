@@ -7,11 +7,11 @@
  */
 
 // Clock implements a LFU-like cache with "clock-hands" that sweep
-// clockwise over a ring-buffer to find a slot for new entries (key,
+// just the once over a ring-buffer to find a slot for an entry (key,
 // value). As these hands sweep, they either countdown the lifetime
-// of the slot (denoted by a number between -1 to #maxcount) or
-// remove it if it is dead (null or count = -1). On a re-insertion
-// (same key, any value), its lifetime is incremented, its value is
+// of the slot (denoted by a number between 1 to #maxcount) or
+// remove it if it is dead (null or count = 0). On a re-insertion
+// (same key, any value), the entry's lifetime incremented, its value
 // overriden. Lifetime increments with every cache-hit, as well.
 //
 // The hands sweep the ring independent of one another, while the
@@ -86,40 +86,48 @@ class Clock {
         return this.store.size;
     }
 
-    evict(n) {
-        logd("evict start, head/toss/size", this.head(n), n, this.size)
-        let h = this.head(n)
+    evict(n, c) {
+        logd("evict start, head/num/size", this.head(n), n, this.size)
+        const start = this.head(n) 
+        let h = start
         // countdown lifetime of alive slots as rb is sweeped for a dead slot
-        while (this.rb[h] !== null && this.rb[h].count-- > 0) {
+        do {
+            const entry = this.rb[h]
+            if (entry === null) return true // empty slot
+            entry.count -= c
+            if (entry.count <= 0) { // dead slot
+                logd("evict", h, entry)
+                this.store.delete(entry.key)
+                this.rb[h] = null
+                return true
+            }
             h = this.incrHead(n)
-        }
+        } while (h !== start) // one sweep complete?
 
-        const cached = this.rb[h]
-        if (cached !== null) {
-            logd("evict", h, cached)
-            this.store.delete(cached.key)
-            this.rb[h] = null
-        }
-        return h
+        return false // no free slot
     }
 
     put(k, v, c = 1) {
         const cached = this.store.get(k)
-        if (cached) {
+        if (cached) { // update entry
             cached.value = v
             const at = this.rb[cached.pos]
             at.count = Math.min(at.count + c, this.#maxcount)
             return
         }
-        const num = this.rolldice
-        const slot = this.evict(num)
+        const num = this.rolldice // choose hand
+        const hasSlot = this.evict(num, c)
 
+        if (!hasSlot) return false
+
+        const h = this.head(num) //  current free slot
         const ringv = { key: k, count: Math.min(c, this.#maxcount) }
-        const storev = { value: v, pos: slot }
-        this.rb[slot] = ringv
+        const storev = { value: v, pos: h }
+        this.rb[h] = ringv
         this.store.set(k, storev)
 
         this.incrHead(num)
+        return true
     }
 
     val(k, c = 1) {
