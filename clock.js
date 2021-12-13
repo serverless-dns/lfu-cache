@@ -21,25 +21,32 @@
 //
 // refs:
 // www-inst.eecs.berkeley.edu/~cs266/sp10/readings/smith78.pdf (page 11)
-// power-of-2 lru: news.ycombinator.com/item?id=19188642
+// power-of-k lru: news.ycombinator.com/item?id=19188642
 class Clock {
 
+   #minlives = 1
+   #maxlives = 2**14
    #maxcount
-   #totalhands
+   #mincap = 2**5
+   #maxcap = 2**32
+   #minslots = 2
+   #totalhands = 2
 
-    constructor(cap) {
-        // always power-of-2
-        this.capacity = Math.pow(2, Math.round(Math.log2(cap)))
+    constructor(cap, slotsperhand = 256, maxlife = 16) {
+        cap = this.bound(cap, this.#mincap, this.#maxcap)
+        this.capacity = 2**Math.round(Math.log2(cap)) // always power-of-2
         // a ring buffer
         this.rb = new Array(this.capacity)
         this.rb.fill(null)
         // a cache
         this.store = new Map()
 
-        this.#maxcount = 16 // max life per kv
-        const slots = 256 // slots per hand
-        this.#totalhands = Math.max(2, Math.round(this.capacity / slots))
+        // maxlives per cached kv entry
+        this.#maxcount = this.bound(maxlife, this.#minlives, this.#maxlives)
+        // limit worst-case slot sweeps per-hand to a constant )
+        this.#totalhands = Math.max(this.#minslots, Math.round(this.capacity / slotsperhand))
 
+        // k-hands for power-of-k admissions
         this.hands = new Array(this.#totalhands)
         for (let i = 0; i < this.#totalhands; i++) this.hands[i] = i
     }
@@ -88,7 +95,7 @@ class Clock {
 
     evict(n, c) {
         logd("evict start, head/num/size", this.head(n), n, this.size)
-        const start = this.head(n) 
+        const start = this.head(n)
         let h = start
         // countdown lifetime of alive slots as rb is sweeped for a dead slot
         do {
@@ -113,14 +120,16 @@ class Clock {
             cached.value = v
             const at = this.rb[cached.pos]
             at.count = Math.min(at.count + c, this.#maxcount)
-            return
+            return true
         }
+
         const num = this.rolldice // choose hand
-        const hasSlot = this.evict(num, c)
+        this.evict(num, c)
+        const h = this.head(num) // current free slot at head
+        const hasSlot = this.rb[h] === null
 
         if (!hasSlot) return false
 
-        const h = this.head(num) //  current free slot
         const ringv = { key: k, count: Math.min(c, this.#maxcount) }
         const storev = { value: v, pos: h }
         this.rb[h] = ringv
