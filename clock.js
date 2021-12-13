@@ -22,18 +22,17 @@
 // refs:
 // www-inst.eecs.berkeley.edu/~cs266/sp10/readings/smith78.pdf (page 11)
 // power-of-k lru: news.ycombinator.com/item?id=19188642
-class Clock {
+const minlives = 1
+const maxlives = 2**14
+const mincap = 2**5
+const maxcap = 2**32
+const minslots = 2
+export class Clock {
 
-   #minlives = 1
-   #maxlives = 2**14
-   #maxcount
-   #mincap = 2**5
-   #maxcap = 2**32
-   #minslots = 2
-   #totalhands = 2
+   
 
     constructor(cap, slotsperhand = 256, maxlife = 16) {
-        cap = this.bound(cap, this.#mincap, this.#maxcap)
+        cap = this.bound(cap, mincap, maxcap)
         this.capacity = 2**Math.round(Math.log2(cap)) // always power-of-2
         // a ring buffer
         this.rb = new Array(this.capacity)
@@ -42,17 +41,17 @@ class Clock {
         this.store = new Map()
 
         // maxlives per cached kv entry
-        this.#maxcount = this.bound(maxlife, this.#minlives, this.#maxlives)
+        this.maxcount = this.bound(maxlife, minlives, maxlives)
         // limit worst-case slot sweeps per-hand to a constant )
-        this.#totalhands = Math.max(this.#minslots, Math.round(this.capacity / slotsperhand))
+        this.totalhands = Math.max(minslots, Math.round(this.capacity / slotsperhand))
 
         // k-hands for power-of-k admissions
-        this.hands = new Array(this.#totalhands)
-        for (let i = 0; i < this.#totalhands; i++) this.hands[i] = i
+        this.hands = new Array(this.totalhands)
+        for (let i = 0; i < this.totalhands; i++) this.hands[i] = i
     }
 
     next(i) {
-        const n = i + this.#totalhands
+        const n = i + this.totalhands
         return (this.capacity + n) % this.capacity
     }
 
@@ -61,7 +60,7 @@ class Clock {
     }
 
     prev(i) {
-        const p = i - this.#totalhands
+        const p = i - this.totalhands
         return (this.capacity + p) % this.capacity
     }
 
@@ -72,19 +71,19 @@ class Clock {
     }
 
     head(n) {
-        n = this.bound(n, 0, this.#totalhands)
+        n = this.bound(n, 0, this.totalhands)
         const h = this.hands[n]
         return this.cur(h)
     }
 
     incrHead(n) {
-        n = this.bound(n, 0, this.#totalhands)
+        n = this.bound(n, 0, this.totalhands)
         this.hands[n] = this.next(this.hands[n])
         return this.hands[n]
     }
 
     decrHead(n) {
-        n = this.bound(n, 0, this.#totalhands)
+        n = this.bound(n, 0, this.totalhands)
         this.hands[n] = this.prev(this.hands[n])
         return this.hands[n]
     }
@@ -119,7 +118,7 @@ class Clock {
         if (cached) { // update entry
             cached.value = v
             const at = this.rb[cached.pos]
-            at.count = Math.min(at.count + c, this.#maxcount)
+            at.count = Math.min(at.count + c, this.maxcount)
             return true
         }
 
@@ -130,7 +129,7 @@ class Clock {
 
         if (!hasSlot) return false
 
-        const ringv = { key: k, count: Math.min(c, this.#maxcount) }
+        const ringv = { key: k, count: Math.min(c, this.maxcount) }
         const storev = { value: v, pos: h }
         this.rb[h] = ringv
         this.store.set(k, storev)
@@ -143,12 +142,12 @@ class Clock {
         const r = this.store.get(k)
         if (!r) return null
         const at = this.rb[r.pos]
-        at.count = Math.min(at.count + c, this.#maxcount)
+        at.count = Math.min(at.count + c, this.maxcount)
         return r.value
     }
 
     get rolldice() {
-        const max = this.#totalhands // exclusive
+        const max = this.totalhands // exclusive
         const min = 0 // inclusive
         return Math.floor(Math.random() * (max - min)) + min
     }
