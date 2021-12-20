@@ -27,9 +27,8 @@ const maxlives = 2**14
 const mincap = 2**5
 const maxcap = 2**32
 const minslots = 2
-export class Clock {
 
-   
+export class Clock {
 
     constructor(cap, slotsperhand = 256, maxlife = 16) {
         cap = this.bound(cap, mincap, maxcap)
