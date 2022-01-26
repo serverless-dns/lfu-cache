@@ -5,7 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-import { Clock as Clock } from "./clock.js";
+import { Clock } from "./clock.js";
 
 export class LfuCache {
   constructor(id, capacity) {
@@ -14,22 +14,10 @@ export class LfuCache {
   }
 
   Get(key) {
-    let val = false;
-    try {
-      val = this.cache.val(key) || false;
-    } catch (e) {
-      console.log("Error: " + this.id + " -> Get");
-      console.log(e.stack);
-    }
-    return val;
+    return this.cache.val(key) || false;
   }
 
   Put(key, val) {
-    try {
-      this.cache.put(key, val);
-    } catch (e) {
-      console.log("Error: " + this.id + " -> Put");
-      console.log(e.stack);
-    }
+    return this.cache.put(key, val);
   }
 }
