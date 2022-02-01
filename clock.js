@@ -35,7 +35,6 @@ export class Clock {
         this.capacity = 2**Math.round(Math.log2(cap)) // always power-of-2
         // a ring buffer
         this.rb = new Array(this.capacity)
-        this.rb.fill(null)
         // a cache
         this.store = new Map()
 
@@ -98,7 +97,7 @@ export class Clock {
         // countdown lifetime of alive slots as rb is sweeped for a dead slot
         do {
             const entry = this.rb[h]
-            if (entry === null) return true // empty slot
+            if (entry == null) return true // empty slot
             entry.count -= c
             if (entry.count <= 0) { // dead slot
                 logd("evict", h, entry)
@@ -113,8 +112,11 @@ export class Clock {
     }
 
     put(k, v, c = 1) {
+        // do not store null k/v
+        if (k == null || v == null) return false
+
         const cached = this.store.get(k)
-        if (cached) { // update entry
+        if (cached != null) { // update entry
             cached.value = v
             const at = this.rb[cached.pos]
             at.count = Math.min(at.count + c, this.maxcount)
@@ -124,7 +126,7 @@ export class Clock {
         const num = this.rolldice // choose hand
         this.evict(num, c)
         const h = this.head(num) // current free slot at head
-        const hasSlot = this.rb[h] === null
+        const hasSlot = this.rb[h] == null
 
         if (!hasSlot) return false
 
@@ -139,7 +141,7 @@ export class Clock {
 
     val(k, c = 1) {
         const r = this.store.get(k)
-        if (!r) return null
+        if (r == null) return null
         const at = this.rb[r.pos]
         at.count = Math.min(at.count + c, this.maxcount)
         return r.value
