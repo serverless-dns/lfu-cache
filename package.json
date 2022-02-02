@@ -1,6 +1,6 @@
 {
   "name": "@serverless-dns/lfu-cache",
-  "version": "2.0.7",
+  "version": "2.1.0",
   "description": "Lfu Cache using a variant of the Clock algorithm",
   "main": "lfu.js",
   "type": "module",
