@@ -118,8 +118,7 @@ export class Clock {
         const cached = this.store.get(k)
         if (cached != null) { // update entry
             cached.value = v
-            const at = this.rb[cached.pos]
-            at.count = Math.min(at.count + c, this.maxcount)
+            this.boost(cached.pos, c)
             return true
         }
 
@@ -142,9 +141,13 @@ export class Clock {
     val(k, c = 1) {
         const r = this.store.get(k)
         if (r == null) return null
-        const at = this.rb[r.pos]
-        at.count = Math.min(at.count + c, this.maxcount)
+        this.boost(r.pos, c)
         return r.value
+    }
+
+    boost(pos, amp = 0) {
+        const me = this.rb[pos]
+        me.count = Math.min(me.count + amp, this.maxcount)
     }
 
     get rolldice() {
@@ -155,8 +158,8 @@ export class Clock {
 
 }
 
-function logd() {
+function logd(...rest) {
     const debug = false
-    if (debug) console.debug(...arguments)
+    if (debug) console.debug(...rest)
 }
 
