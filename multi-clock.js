@@ -11,18 +11,27 @@ import { Clock } from "./clock.js"
 // Manages multiple Clocks that expand in size upto to total capacity.
 export class MultiClock {
     constructor(cap, handsperclock = 2, maxlife = 32) {
-        this.slotsperhand = 256
+        this.slotsperhand = 256 // power-of-2
         this.handsperclock = handsperclock
         this.maxlife = maxlife
         this.clockcap = this.slotsperhand * this.handsperclock
         this.totalcap = 2**Math.round(Math.log2(cap)) // power-of-2
-        this.totalclocks = this.totalcap / this.clockcap
+        this.totalclocks = Math.round(this.totalcap / this.clockcap)
+
         this.clocks = []
         this.idx = []
 
         this.expand();
 
         logd("sz", this.totalcap, "n", this.totalclocks, "l", this.clockcap)
+    }
+
+    iterlimit() {
+        if (this.expandable()) {
+            return Math.ceil(this.totalclocks * 0.1)
+        } else {
+            return Math.ceil(this.totalclocks * 0.05)
+        }
     }
 
     expandable() {
@@ -86,15 +95,18 @@ export class MultiClock {
         // reduce life of cached-items iff no expansion is possible
         // that is, find an empty slot without aging cached-items
         const down = this.expandable() ? 0 : c
+        const limit = this.iterlimit();
         // put value (v) in an empty slot, if any, in existing clocks
         for (const i of this.idx) {
             const x = this.clocks[i]
             const ok = x.put(k, v, down)
             // down may be 0, so if put succeeds, reinstate orig (c)
-            if (ok && c !== 0 && down === 0) {
+            if (ok && c !== down) {
                 x.val(k, c)
                 return true
             }
+            // do not sweep any more clocks for a slot
+            if (i >= limit) break;
         }
 
         // make a new clock, and put value (v) with life (c)
