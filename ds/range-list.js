@@ -13,6 +13,7 @@
 // is an illegal, unsupported operation. Ranges can be of arbitary spawns,
 // though, the min and max supported values are governed by
 // Number.MIN_SAFE_INTEGER + 2 and Number.MAX_SAFE_INTEGER - 2.
+// ref: archive.is/nl3G8 (impl) and archive.is/ffCDr (analysis)
 export class RangeList {
     constructor(maxlevel = 16) {
       this.init();

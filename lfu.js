@@ -10,7 +10,7 @@ import { RangeList, mkrange } from "./ds/range-list.js"
 import { HashMap } from "./ds/map.js"
 import { MultiClock } from "./strat/multi-clock.js"
 
-// An approximate LFU cache
+// An approximate LFU cache for arbitary (key, value) pairs.
 export class LfuCache {
   constructor(id, capacity) {
     this.id = id
@@ -20,29 +20,34 @@ export class LfuCache {
     })
   }
 
-  Get(key) {
+  get(key) {
     return this.cache.val(key) || false
   }
 
-  Put(key, val) {
+  put(key, val) {
     return this.cache.put(key, val)
   }
 }
 
+// An approximate LFU cache for (integer-range, value) pairs.
 export class RangeLfu {
   constructor(id, capacity) {
+    const shardsize = 256;
+    const sklevel = log2(shardsize);
+
     this.id = id
     this.cache = new MultiClock({
       cap: capacity,
-      store: () => new RangeList(log2(capacity)),
+      slotsperhand: shardsize,
+      store: () => new RangeList(sklevel),
     })
   }
 
-  Get(n) {
+  get(n) {
     return this.cache.val(n) || false
   }
 
-  Put(lo, hi, val) {
+  put(lo, hi, val) {
     return this.cache.put(mkrange(lo, hi), val)
   }
 }
