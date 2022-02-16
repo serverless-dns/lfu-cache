@@ -8,18 +8,31 @@
 
 import { Clock } from "./clock.js"
 
+const opts = {
+    cap: 64,
+    handsperclock: 2,
+    slotsperhand: 256,
+    maxlife: 32,
+    store: null,
+}
+
 // Manages multiple Clocks that expand in size upto to total capacity.
 export class MultiClock {
-    constructor(cap, handsperclock = 2, maxlife = 32) {
-        this.slotsperhand = 256 // power-of-2
-        this.handsperclock = handsperclock
-        this.maxlife = maxlife
+    constructor(overrides) {
+        Object.assign(opts, overrides);
+
+        if (opts.store == null) throw new Error("missing underlying store");
+
+        this.slotsperhand = opts.slotsperhand // must be power-of-2
+        this.handsperclock = opts.handsperclock
+        this.maxlife = opts.maxlife
         this.clockcap = this.slotsperhand * this.handsperclock
-        this.totalcap = 2**Math.round(Math.log2(cap)) // power-of-2
+        this.totalcap = 2**Math.round(Math.log2(opts.cap)) // power-of-2
         this.totalclocks = Math.round(this.totalcap / this.clockcap)
 
         this.clocks = []
         this.idx = []
+        this.store = opts.store()
 
         this.expand();
 
@@ -50,7 +63,12 @@ export class MultiClock {
     }
 
     mkclock() {
-        return new Clock(this.clockcap, this.slotsperhand, this.maxlife)
+        return new Clock(
+            this.clockcap,
+            this.slotsperhand,
+            this.maxlife,
+            this.store
+        )
     }
 
     get size() {
@@ -145,6 +163,6 @@ export class MultiClock {
 
 function logd(...rest) {
     const debug = false
-    if (debug) console.debug(...rest)
+    if (debug) console.debug("MultiClock", ...rest)
 }
 

@@ -1,10 +1,16 @@
 /*
- * Copyright (c) 2020 RethinkDNS and its authors.
+ * Copyright (c) 2022 RethinkDNS and its authors.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
+
+const minlives = 1
+const maxlives = 2**14
+const mincap = 2**5
+const maxcap = 2**32
+const minslots = 2
 
 // Clock implements a LFU-like cache with "clock-hands" that sweep
 // just the once over a ring-buffer to find a slot for an entry (key,
@@ -22,21 +28,17 @@
 // refs:
 // www-inst.eecs.berkeley.edu/~cs266/sp10/readings/smith78.pdf (page 11)
 // power-of-k lru: news.ycombinator.com/item?id=19188642
-const minlives = 1
-const maxlives = 2**14
-const mincap = 2**5
-const maxcap = 2**32
-const minslots = 2
-
 export class Clock {
 
-    constructor(cap, slotsperhand = 256, maxlife = 16) {
+    constructor(cap, slotsperhand = 256, maxlife = 16, store) {
+        if (store == null) throw new Error("missing underlying store");
+
         cap = this.bound(cap, mincap, maxcap)
         this.capacity = 2**Math.round(Math.log2(cap)) // always power-of-2
         // a ring buffer
         this.rb = new Array(this.capacity)
-        // a cache
-        this.store = new Map()
+        // cache backed by this store
+        this.store = store
 
         // maxlives per cached kv entry
         this.maxcount = this.bound(maxlife, minlives, maxlives)
@@ -160,6 +162,6 @@ export class Clock {
 
 function logd(...rest) {
     const debug = false
-    if (debug) console.debug(...rest)
+    if (debug) console.debug("Clock", ...rest)
 }
 
