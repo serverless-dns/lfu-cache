@@ -89,11 +89,14 @@ export class RangeList {
       logd("get i/cur/<w>/lt/gt", i, cur, eq, lt, gt);
 
       if (eq) {
+        // cur is the ans, if it is not the tail node
         // exclude tail, not a valid search result
         return cur === this.tail ? null : cur;
       } else if (lt) {
+        // for the next iteration, lookup siblings of cur
         node = cur;
       } else if (gt) {
+        // for the next iteration, lookup siblings of node
         i -= 1;
       }
     }
@@ -105,6 +108,7 @@ export class RangeList {
     const node = this.get(n);
     if (node == null) return false;
 
+    // delete node from all its levels
     for (let i = 0; i < node.next.length; i++) {
       const predecessor = node.prev[i];
       const successor = node.next[i];
@@ -143,12 +147,12 @@ export class RangeList {
     return mknode(maxr, "tail");
   }
 
-  // faster coinflips trick from ticki.github.io/blog/skip-lists-done-right
+  // faster coinflips from ticki.github.io/blog/skip-lists-done-right
   randomLevel() {
     let coinflips = Math.floor(Math.random() * (1 << this.maxlevel));
     let level = 0;
     do {
-      const lsbset = coinflips & (0x1 === 1);
+      const lsbset = (coinflips & 0x1) === 1;
       if (!lsbset) break;
       level += 1;
       coinflips >>>= 1;
