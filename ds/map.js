@@ -22,4 +22,12 @@ export class HashMap {
     delete(k, v) {
         return this.m.delete(k);
     }
+
+    clear() {
+        this.m.clear();
+    }
+
+    entries() {
+        return this.m.entries();
+    }
 }
