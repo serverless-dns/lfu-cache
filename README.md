@@ -1,37 +1,23 @@
-This is a least-frequently-used(LFU) cache implementation repository.<br>
+Least Frequently Used cache implementations.
 
-1. Create lfu cache <br> 
-    let cache = new LfuCache(lfuname, size).<br>
-    lfuname(string) -> name to cache object.<br>
-    size(integer) -> size denotes lfu cache data holding capacity.<br>
-    If size is 5 then lfu can hold 5 uniqe key with data.<br>
+`/strat` contains an approximate implementation of the _Clock_ algorithm, which not only
+increments frequency on cache-hits but also decrements frequency of items part of the same
+'clock' on cache-misses, to avoid starving newer entries of slots.
 
-2. Put to lfu cache <br> 
-    let obj = {} <br> 
-    obj.k = "key"     <br> 
-    obj.n and obj.p is reserved keys for lfucache.     <br> 
-    add your data to obj and pass to  <br> 
-    example: 
-    ````script
-    obj.data = {}
-    obj.data.value = "my test data"
-    obj.map = new Map() <br> 
-    obj.map.set("value","my map test data")
-    obj.set = new Set()
-    obj.set.add("my set test data")
-    cache.Put(obj)
-    ````
-    While inserting into lfu cahche if cache is full then removes key which is not used for long time and add new key to cache. <br> 
-    
-3. Get from lfu cache <br> 
-    let obj = cache.Get("key") <br> 
-    if key found returns object saved against key else return False <br> 
-    example
-    ````
-    {
-        data: { value: 'my test data' },
-        map: Map { 'value' => 'my map test data' },
-        set: Set { 'my set test data' },
-        k: 'key'
-    }
-    ````
+`/ds` contains implementations of underlying stores supporting the cache: A `HashMap` backed
+by the native `Map`, and a restrictive `RangeList` backed by a Skip List.
+
+That is, `Clock.js` or `MultiClock.js` instances can be backed by either `HashMap` for point
+queries, or by `RangeList` for range queries.
+
+`lfu.js` serves as the entrypoint to construct and interact with LFUs.
+
+```js
+  const lfu = new LfuCache("L1", 10)
+  lfu.Put(1, "a") // 1 -> "a"
+  const v = lfu.Get("a") // v = "a"
+
+  const rgcache = new RangeLfu("R1", 10)
+  rgcache.Put(1, 10, "a") // (1, 10) -> "a"
+  const v = rgcache.Get(5) // v = "a"
+````
