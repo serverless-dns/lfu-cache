@@ -15,147 +15,147 @@
 // Number.MIN_SAFE_INTEGER + 2 and Number.MAX_SAFE_INTEGER - 2.
 // ref: archive.is/nl3G8 (impl) and archive.is/ffCDr (analysis)
 export class RangeList {
-    constructor(maxlevel = 16) {
-      this.init();
-      this.maxlevel = maxlevel;
+  constructor(maxlevel = 16) {
+    this.init();
+    this.maxlevel = maxlevel;
 
-      logd("lvl", this.maxlevel, "h/t", this.head.range, this.tail.range)
+    logd("lvl", this.maxlevel, "h/t", this.head.range, this.tail.range);
+  }
+
+  init() {
+    this.head = this.mkhead();
+    this.tail = this.mktail();
+
+    this.head.next[0] = this.tail;
+    this.head.prev[0] = this.tail;
+    this.tail.next[0] = this.head;
+    this.tail.prev[0] = this.head;
+
+    this.level = 0;
+    this.size = 0;
+  }
+
+  set(range, aux) {
+    const node = mknode(range, aux);
+    const lr = this.randomLevel();
+    let cur = this.head;
+    const slots = [];
+    // traverse through all levels
+    for (let i = this.level, j = 0; i >= 0; i--, j++) {
+      // stop before the first slot greater than node.range
+      while (lowl(cur.next[i], node)) cur = cur.next[i];
+
+      slots[j] = cur;
     }
 
-    init() {
-      this.head = this.mkhead();
-      this.tail = this.mktail();
+    logd("set lr/node/slots:", lr, node, slots);
 
-      this.head.next[0] = this.tail;
-      this.head.prev[0] = this.tail;
-      this.tail.next[0] = this.head;
-      this.tail.prev[0] = this.head;
+    for (let i = slots.length - 1, j = 0; i >= 0; i--, j++) {
+      // ignore slots greater than the current node's level
+      // as they can't be linked as a predecessor to it
+      if (i > lr) continue;
 
-      this.level = 0;
-      this.size = 0;
+      const predecessor = slots[j];
+      const successor = slots[j].next[i];
+      node.next[i] = successor;
+      node.prev[i] = predecessor;
+      predecessor.next[i] = node;
+      successor.prev[i] = node;
     }
 
-    set(range, aux) {
-      const node = mknode(range, aux);
-      const lr = this.randomLevel();
-      let cur = this.head;
-      const slots = [];
-      // traverse through all levels
-      for (let i = this.level, j = 0; i >= 0; i--, j++) {
-        // stop before the first slot greater than node.range
-        while (lowl(cur.next[i], node)) cur = cur.next[i];
+    // when the current node's level is greater than level of the skip-list
+    // it slots between head and tail, as the skip-list's level increments
+    for (let i = slots.length; i <= lr; i++) {
+      node.prev[i] = this.head;
+      node.next[i] = this.tail;
+      this.head.next[i] = node;
+      this.tail.prev[i] = node;
+      this.level += 1;
+    }
 
-        slots[j] = cur;
+    this.size += 1;
+  }
+
+  get(n) {
+    let i = this.level;
+    // exclude head from search
+    let node = this.head;
+    while (i >= 0 && node !== this.tail) {
+      const cur = node.next[i];
+      const eq = nodeContainsN(cur, n);
+      const lt = nodeLessThanN(cur, n);
+      const gt = nodeGreaterThanN(cur, n);
+
+      logd("get i/cur/<w>/lt/gt", i, cur, eq, lt, gt);
+
+      if (eq) {
+        // exclude tail, not a valid search result
+        return cur === this.tail ? null : cur;
+      } else if (lt) {
+        node = cur;
+      } else if (gt) {
+        i -= 1;
       }
-
-      logd("set lr/node/slots:", lr, node, slots);
-
-      for (let i = slots.length - 1, j = 0; i >= 0 ; i--, j++) {
-        // ignore slots greater than the current node's level
-        // as they can't be linked as a predecessor to it
-        if (i > lr) continue;
-
-        const predecessor = slots[j];
-        const successor = slots[j].next[i];
-        node.next[i] = successor;
-        node.prev[i] = predecessor;
-        predecessor.next[i] = node;
-        successor.prev[i] = node;
-      }
-
-      // when the current node's level is greater than level of the skip-list
-      // it slots between head and tail, as the skip-list's level increments
-      for (let i = slots.length; i <= lr; i++) {
-        node.prev[i] = this.head;
-        node.next[i] = this.tail;
-        this.head.next[i] = node;
-        this.tail.prev[i] = node;
-        this.level += 1;
-      }
-
-      this.size += 1;
     }
 
-    get(n) {
-      let i = this.level;
-      // exclude head from search
-      let node = this.head;
-      while (i >= 0 && node != this.tail) {
-        const cur = node.next[i];
-        const eq = nodeContainsN(cur, n);
-        const lt = nodeLessThanN(cur, n);
-        const gt = nodeGreaterThanN(cur, n);
- 
-        logd("get i/cur/<w>/lt/gt", i, cur, eq, lt, gt);
- 
-        if (eq) {
-          // exclude tail, not a valid search result
-          return (cur === this.tail) ? null : cur;
-        } else if (lt) {
-          node = cur;
-        } else if (gt) {
-          i -= 1;
-        }
-      }
+    return null;
+  }
 
-      return null;
+  delete(n) {
+    const node = this.get(n);
+    if (node == null) return false;
+
+    for (let i = 0; i < node.next.length; i++) {
+      const predecessor = node.prev[i];
+      const successor = node.next[i];
+      predecessor.next[i] = successor;
+      successor.prev[i] = predecessor;
     }
 
-    delete(n) {
-      const node = this.get(n);
-      if (node == null) return false;
+    this.size -= 1;
 
-      for (let i = 0; i < node.next.length; i++) {
-        const predecessor = node.prev[i];
-        const successor = node.next[i];
-        predecessor.next[i] = successor;
-        successor.prev[i] = predecessor;
-      }
+    return true;
+  }
 
-      this.size -= 1;
+  entries() {
+    const kv = [];
 
-      return true;
+    let x = this.head.next[0];
+    while (x !== this.tail) {
+      kv.push(x);
+      x = x.next[0];
     }
 
-    entries() {
-      const kv = [];
+    return kv;
+  }
 
-      let x = this.head.next[0];
-      while (x != this.tail) {
-        kv.push(x);
-        x = x.next[0];
-      }
+  clear() {
+    this.init();
+  }
 
-      return kv;
-    }
+  mkhead() {
+    const minr = mkrange(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER + 1);
+    return mknode(minr, "head");
+  }
 
-    clear() {
-      this.init();
-    }
+  mktail() {
+    const maxr = mkrange(Number.MAX_SAFE_INTEGER - 1, Number.MAX_SAFE_INTEGER);
+    return mknode(maxr, "tail");
+  }
 
-    mkhead() {
-        const minr = mkrange(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER + 1);
-        return mknode(minr, "head");
-    }
+  // faster coinflips trick from ticki.github.io/blog/skip-lists-done-right
+  randomLevel() {
+    let coinflips = Math.floor(Math.random() * (1 << this.maxlevel));
+    let level = 0;
+    do {
+      const lsbset = coinflips & (0x1 === 1);
+      if (!lsbset) break;
+      level += 1;
+      coinflips >>>= 1;
+    } while (coinflips > 0);
 
-    mktail() {
-        const maxr = mkrange(Number.MAX_SAFE_INTEGER - 1, Number.MAX_SAFE_INTEGER);
-        return mknode(maxr, "tail");
-    }
-
-    // faster coinflips trick from ticki.github.io/blog/skip-lists-done-right
-    randomLevel() {
-      let coinflips = Math.floor(Math.random() * (1 << this.maxlevel));
-      let level = 0;
-      do {
-        const lsbset = coinflips & 0x1 === 1
-        if (!lsbset) break;
-        level += 1;
-        coinflips >>>= 1;
-      } while (coinflips > 0);
-
-      return level;
-    }
+    return level;
+  }
 }
 
 export function mkrange(lo, hi) {
@@ -163,10 +163,6 @@ export function mkrange(lo, hi) {
     lo: lo,
     hi: hi,
   };
-}
-
-function highl(left, right) {
-  return left.range.lo > right.range.hi;
 }
 
 function lowl(left, right) {

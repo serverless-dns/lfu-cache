@@ -7,27 +7,27 @@
  */
 
 export class HashMap {
-    constructor() {
-        this.m = new Map();
-    }
+  constructor() {
+    this.m = new Map();
+  }
 
-    get(k) {
-        return this.m.get(k);
-    }
+  get(k) {
+    return this.m.get(k);
+  }
 
-    set(k, v) {
-        return this.m.set(k, v);
-    }
+  set(k, v) {
+    return this.m.set(k, v);
+  }
 
-    delete(k, v) {
-        return this.m.delete(k);
-    }
+  delete(k) {
+    return this.m.delete(k);
+  }
 
-    clear() {
-        this.m.clear();
-    }
+  clear() {
+    this.m.clear();
+  }
 
-    entries() {
-        return this.m.entries();
-    }
+  entries() {
+    return this.m.entries();
+  }
 }

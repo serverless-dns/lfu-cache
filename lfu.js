@@ -6,26 +6,26 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-import { RangeList, mkrange } from "./ds/range-list.js"
-import { HashMap } from "./ds/map.js"
-import { MultiClock } from "./strat/multi-clock.js"
+import { RangeList, mkrange } from "./ds/range-list.js";
+import { HashMap } from "./ds/map.js";
+import { MultiClock } from "./strat/multi-clock.js";
 
 // An approximate LFU cache for arbitary (key, value) pairs.
 export class LfuCache {
   constructor(id, capacity) {
-    this.id = id
+    this.id = id;
     this.cache = new MultiClock({
       cap: capacity,
       store: () => new HashMap(),
-    })
+    });
   }
 
   get(key) {
-    return this.cache.val(key) || false
+    return this.cache.val(key) || false;
   }
 
   put(key, val) {
-    return this.cache.put(key, val)
+    return this.cache.put(key, val);
   }
 }
 
@@ -35,20 +35,20 @@ export class RangeLfu {
     const shardsize = 256;
     const sklevel = log2(shardsize);
 
-    this.id = id
+    this.id = id;
     this.cache = new MultiClock({
       cap: capacity,
       slotsperhand: shardsize,
       store: () => new RangeList(sklevel),
-    })
+    });
   }
 
   get(n) {
-    return this.cache.val(n) || false
+    return this.cache.val(n) || false;
   }
 
   put(lo, hi, val) {
-    return this.cache.put(mkrange(lo, hi), val)
+    return this.cache.put(mkrange(lo, hi), val);
   }
 }
 

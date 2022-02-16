@@ -37,7 +37,7 @@ module.exports = {
     "require-jsdoc": 0,
     "valid-jsdoc": 0,
     quotes: ["error", "double", { allowTemplateLiterals: true }],
-    "no-unused-vars": "warn",
+    "no-unused-vars": ["warn", {"varsIgnorePattern": "^_"}],
     "new-cap": ["error", { properties: false }],
 
     // Enforces rules from .prettierrc file.
