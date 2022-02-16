@@ -1,11 +1,13 @@
 {
   "name": "@serverless-dns/lfu-cache",
-  "version": "2.1.0",
+  "version": "3.0",
   "description": "Lfu Cache using a variant of the Clock algorithm",
   "main": "lfu.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint '**/*.{js,ts}' --quiet",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -16,5 +18,17 @@
   "bugs": {
     "url": "https://github.com/serverless-dns/lfu-cache/issues"
   },
-  "homepage": "https://github.com/serverless-dns/lfu-cache#readme"
+  "homepage": "https://github.com$/serverless-dns/lfu-cache#readme",
+  "lint-staged": {
+    "*.js": "eslint --cache --fix",
+    "*.ts": "prettier --write"
+  },
+  "devDependencies": {
+    "eslint": "^8.9.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "husky": "^7.0.4",
+    "lint-staged": "^12.3.4",
+    "prettier": "^2.5.1"
+  }
 }
