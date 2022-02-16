@@ -14,10 +14,10 @@ queries, or by `RangeList` for range queries.
 
 ```js
   const lfu = new LfuCache("L1", 10)
-  lfu.Put(1, "a") // 1 -> "a"
-  const v = lfu.Get("a") // v = "a"
+  lfu.put(1, "a") // 1 -> "a"
+  const v = lfu.get("a") // v = "a"
 
   const rgcache = new RangeLfu("R1", 10)
-  rgcache.Put(1, 10, "a") // (1, 10) -> "a"
-  const v = rgcache.Get(5) // v = "a"
+  rgcache.put(1, 10, "a") // (1, 10) -> "a"
+  const v = rgcache.get(5) // v = "a"
 ````
