@@ -76,7 +76,13 @@ export class RangeList {
     this.size += 1;
   }
 
-  get(n) {
+  get(range) {
+    const d = this.xget(range.lo);
+    if (d && d.value) return d.value;
+    return null;
+  }
+
+  xget(n) {
     let i = this.level;
     // exclude head from search
     let node = this.head;
@@ -86,7 +92,7 @@ export class RangeList {
       const lt = nodeLessThanN(cur, n);
       const gt = nodeGreaterThanN(cur, n);
 
-      logd("get i/cur/<w>/lt/gt", i, cur, eq, lt, gt);
+      logd("get i/n/cur/<w>/lt/gt", i, n, cur, eq, lt, gt);
 
       if (eq) {
         // cur is the ans, if it is not the tail node
@@ -98,14 +104,16 @@ export class RangeList {
       } else if (gt) {
         // for the next iteration, lookup siblings of node
         i -= 1;
+      } else {
+        throw new Error("fail: is n a number?", n);
       }
     }
 
     return null;
   }
 
-  delete(n) {
-    const node = this.get(n);
+  delete(range) {
+    const node = this.get(range);
     if (node == null) return false;
 
     // delete node from all its levels

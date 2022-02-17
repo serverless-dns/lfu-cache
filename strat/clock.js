@@ -148,6 +148,9 @@ export class Clock {
   val(k, c = 1) {
     const r = this.store.get(k);
     if (r == null) return null;
+
+    logd("hit:", r.pos, "val:", r.value);
+
     this.boost(r.pos, c);
     return r.value;
   }

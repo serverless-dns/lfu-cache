@@ -44,7 +44,7 @@ export class RangeLfu {
   }
 
   get(n) {
-    return this.cache.val(n) || false;
+    return this.cache.val(mkrange(n, n)) || false;
   }
 
   put(lo, hi, val) {
