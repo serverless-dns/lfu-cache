@@ -27,8 +27,8 @@ export class MultiClock {
     this.handsperclock = opts.handsperclock;
     this.maxlife = opts.maxlife;
     this.clockcap = this.slotsperhand * this.handsperclock;
-    this.totalcap = 2 ** Math.round(Math.log2(opts.cap)); // power-of-2
-    this.totalclocks = Math.round(this.totalcap / this.clockcap);
+    this.totalcap = 2 ** Math.ceil(Math.log2(opts.cap)); // power-of-2
+    this.totalclocks = Math.ceil(this.totalcap / this.clockcap);
 
     this.clocks = [];
     this.idx = [];

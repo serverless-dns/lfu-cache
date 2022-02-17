@@ -105,7 +105,7 @@ export class RangeList {
         // for the next iteration, lookup siblings of node
         i -= 1;
       } else {
-        throw new Error("fail: is n a number?", n);
+        throw new Error("get fail: is n a number?", n);
       }
     }
 
