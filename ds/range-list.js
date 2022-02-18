@@ -19,6 +19,12 @@ export class RangeList {
     this.init();
     this.maxlevel = maxlevel;
 
+    // if this.maxlevel = 16 (0x10), then:
+    // maxlevel = 0x8000 or 0b1000_0000_0000 (= 2**15)
+    // bitmask => 0x4000 or 0b0100_0000_0000 (= 2**14)
+    this.maxflips = Math.pow(2, this.maxlevel - 1);
+    this.bitmask = Math.pow(2, this.maxlevel - 2);
+
     logd("lvl", this.maxlevel, "h/t", this.head.range, this.tail.range);
   }
 
@@ -35,12 +41,13 @@ export class RangeList {
     this.size = 0;
   }
 
+  // FIXME: reject overlapping ranges
   set(range, aux) {
     const node = mknode(range, aux);
     const lr = this.randomLevel();
     let cur = this.head;
     const slots = [];
-    // traverse through all levels
+    // find slots at all levels to fit the incoming node in
     for (let i = this.level, j = 0; i >= 0; i--, j++) {
       // stop before the first slot greater than node.range
       while (lowl(cur.next[i], node)) cur = cur.next[i];
@@ -51,7 +58,7 @@ export class RangeList {
     logd("set lr/node/slots:", lr, node, slots);
 
     for (let i = slots.length - 1, j = 0; i >= 0; i--, j++) {
-      // ignore slots greater than the current node's level
+      // ignore slots greater than the incoming node's level
       // as they can't be linked as a predecessor to it
       if (i > lr) continue;
 
@@ -63,8 +70,8 @@ export class RangeList {
       successor.prev[i] = node;
     }
 
-    // when the current node's level is greater than level of the skip-list
-    // it slots between head and tail, as the skip-list's level increments
+    // when the incoming node's level is greater than the skip-list's level,
+    // slot it between head and tail, then increment skip-list's level
     for (let i = slots.length; i <= lr; i++) {
       node.prev[i] = this.head;
       node.next[i] = this.tail;
@@ -76,12 +83,14 @@ export class RangeList {
     this.size += 1;
   }
 
+  // get gets the value stored against an integer range (lo, hi)
   get(range) {
     const d = this.xget(range.lo);
     if (d && d.value) return d.value;
     return null;
   }
 
+  // xget gets the skip-list node that has integer 'n' in its range
   xget(n) {
     let i = this.level;
     // exclude head from search
@@ -113,7 +122,7 @@ export class RangeList {
   }
 
   delete(range) {
-    const node = this.get(range);
+    const node = this.xget(range.lo);
     if (node == null) return false;
 
     // delete node from all its levels
@@ -157,13 +166,20 @@ export class RangeList {
 
   // faster coinflips from ticki.github.io/blog/skip-lists-done-right
   randomLevel() {
-    let coinflips = Math.floor(Math.random() * (1 << this.maxlevel));
+    // TODO: Math.trunc instead of Math.floor?
+    // probability(c) heads (ex: c=4 => hhhh) is given by 1/(2**c)
+    // coinflips => (0, maxflips]; 0 inclusive, maxflips exclusive
+    let coinflips = Math.floor(Math.random() * this.maxflips);
     let level = 0;
     do {
-      const lsbset = (coinflips & 0x1) === 1;
-      if (!lsbset) break;
+      // msb more random than lsb;
+      // github.com/ocaml/ocaml/blob/389121d3/runtime/lf_skiplist.c#L86
+      const msbset = (coinflips & this.bitmask) === this.bitmask;
+      if (!msbset) break;
       level += 1;
-      coinflips >>>= 1;
+      // bitwise ops, ex: coinflips << 1, are limited to int32 range,
+      // using them will cause overflow when this.maxlevel > 30
+      coinflips *= 2;
     } while (coinflips > 0);
 
     return level;
