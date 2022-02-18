@@ -177,6 +177,8 @@ export class RangeList {
       const msbset = (coinflips & this.bitmask) === this.bitmask;
       if (!msbset) break;
       level += 1;
+      // truncate coinflips to one les than bitmask bits
+      coinflips = coinflips & (this.bitmask - 1);
       // bitwise ops, ex: coinflips << 1, are limited to int32 range,
       // using them will cause overflow when this.maxlevel > 30
       coinflips *= 2;
