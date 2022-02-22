@@ -41,10 +41,11 @@ export class Clock {
 
     // maxlives per cached kv entry
     this.maxcount = this.bound(maxlife, minlives, maxlives);
+    this.slotsperhand = 2 ** Math.round(Math.log2(slotsperhand));
     // limit worst-case slot sweeps per-hand to a constant )
     this.totalhands = Math.max(
       minslots,
-      Math.round(this.capacity / slotsperhand)
+      Math.round(this.capacity / this.slotsperhand)
     );
 
     // k-hands for power-of-k admissions
@@ -63,8 +64,8 @@ export class Clock {
   }
 
   prev(n) {
-    const base = n * this.slotsperhand;
-    return base + ((this.hands[n] - 1) % this.slotsperhand);
+    const b = n * this.slotsperhand;
+    return b + ((this.slotsperhand + this.hands[n] - 1) % this.slotsperhand);
   }
 
   bound(i, min, max) {
