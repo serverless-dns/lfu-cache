@@ -24,8 +24,8 @@ export class LfuCache {
     return this.cache.val(key) || false;
   }
 
-  put(key, val) {
-    return this.cache.put(key, val);
+  put(key, val, freq = 1) {
+    return this.cache.put(key, val, freq);
   }
 }
 
@@ -60,8 +60,8 @@ export class RangeLfu {
     return this.cache.val(mkrange(n, n)) || false;
   }
 
-  put(lo, hi, val) {
-    return this.cache.put(mkrange(lo, hi), val);
+  put(lo, hi, val, freq = 1) {
+    return this.cache.put(mkrange(lo, hi), val, freq);
   }
 }
 
