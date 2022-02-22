@@ -9,9 +9,30 @@
 import { RangeList, mkrange } from "./ds/range-list.js";
 import { HashMap } from "./ds/map.js";
 import { MultiClock } from "./strat/multi-clock.js";
+import { O1 } from "./strat/o1.js";
+
+// A constant-time LFU cache for arbitary (key, value) pairs.
+export class LfuCache {
+  constructor(id, capacity) {
+    this.id = id;
+    this.cache = new O1({
+      cap: capacity,
+      freq: 16,
+      store: () => new HashMap(),
+    });
+  }
+
+  get(key, freq = 1) {
+    return this.cache.val(key, freq) || false;
+  }
+
+  put(key, val, freq = 1) {
+    return this.cache.put(key, val, freq);
+  }
+}
 
 // An approximate LFU cache for arbitary (key, value) pairs.
-export class LfuCache {
+export class ClockLfu {
   constructor(id, capacity) {
     this.id = id;
     this.cache = new MultiClock({
@@ -20,8 +41,8 @@ export class LfuCache {
     });
   }
 
-  get(key) {
-    return this.cache.val(key) || false;
+  get(key, freq = 1) {
+    return this.cache.val(key, freq) || false;
   }
 
   put(key, val, freq = 1) {
@@ -56,8 +77,8 @@ export class RangeLfu {
     });
   }
 
-  get(n) {
-    return this.cache.val(mkrange(n, n)) || false;
+  get(n, freq = 1) {
+    return this.cache.val(mkrange(n, n), freq) || false;
   }
 
   put(lo, hi, val, freq = 1) {
