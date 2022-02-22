@@ -30,4 +30,8 @@ export class HashMap {
   entries() {
     return this.m.entries();
   }
+
+  size() {
+    return this.m.size;
+  }
 }

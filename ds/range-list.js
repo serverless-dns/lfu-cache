@@ -38,7 +38,7 @@ export class RangeList {
     this.tail.prev[0] = this.head;
 
     this.level = 0;
-    this.size = 0;
+    this.length = 0;
   }
 
   // FIXME: reject overlapping ranges
@@ -80,7 +80,7 @@ export class RangeList {
       this.level += 1;
     }
 
-    this.size += 1;
+    this.length += 1;
   }
 
   // get gets the value stored against an integer range (lo, hi)
@@ -133,7 +133,7 @@ export class RangeList {
       successor.prev[i] = predecessor;
     }
 
-    this.size -= 1;
+    this.length -= 1;
 
     return true;
   }
@@ -148,6 +148,10 @@ export class RangeList {
     }
 
     return kv;
+  }
+
+  size() {
+    return this.length;
   }
 
   clear() {
