@@ -8,18 +8,22 @@
 
 import { Clock } from "./clock.js";
 
-const opts = {
-  cap: 64,
-  handsperclock: 2,
-  slotsperhand: 256,
-  maxlife: 32,
-  store: null,
-};
+function defaults() {
+  return {
+    cap: 64,
+    handsperclock: 2,
+    slotsperhand: 256,
+    maxlife: 32,
+    store: null,
+  };
+}
 
 // Manages multiple Clocks that expand in size upto to total capacity.
+// Roughly, it is similar to, but not quite, a tiered vector of Clocks:
+// www.cs.brown.edu/cgc/jdsl/papers/tiered-vector.pdf
 export class MultiClock {
   constructor(overrides) {
-    Object.assign(opts, overrides);
+    const opts = Object.assign(defaults(), overrides);
 
     if (opts.store == null) throw new Error("missing underlying store");
 
@@ -48,17 +52,17 @@ export class MultiClock {
   }
 
   expandable() {
-    return this.size < this.totalclocks;
+    return this.length < this.totalclocks;
   }
 
   expand() {
     if (!this.expandable()) {
-      logd("cannot expand further, size:", this.size);
+      logd("cannot expand further, size:", this.length);
       return null;
     }
     const x = this.mkclock();
     this.clocks.push(x);
-    this.idx.push(this.size - 1);
+    this.idx.push(this.length - 1);
     return x;
   }
 
@@ -71,7 +75,7 @@ export class MultiClock {
     );
   }
 
-  get size() {
+  get length() {
     return this.clocks.length;
   }
 
@@ -134,6 +138,14 @@ export class MultiClock {
     }
 
     return false;
+  }
+
+  size() {
+    let s = 0;
+    for (const c of this.clocks) {
+      s += c.size();
+    }
+    return s;
   }
 
   // stackoverflow.com/a/12646864
