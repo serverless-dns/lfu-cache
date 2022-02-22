@@ -6,11 +6,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-const minlives = 1;
-const maxlives = 2 ** 14;
-const mincap = 2 ** 5;
-const maxcap = 2 ** 32;
-const minslots = 2;
+const minlives = 1 << 0; // 1
+const maxlives = 1 << 14; // 16,384
+const mincap = 1 << 5; // 32
+const maxcap = 1 << 30; // 1,073,741,824
+const minslots = 1 << 1; // 2
 
 // Clock implements a LFU-like cache with "clock-hands" that sweep
 // just the once over a ring-buffer to find a slot for an entry (key,
@@ -49,70 +49,70 @@ export class Clock {
 
     // k-hands for power-of-k admissions
     this.hands = new Array(this.totalhands);
-    for (let i = 0; i < this.totalhands; i++) this.hands[i] = i;
+    this.hands.fill(0);
   }
 
-  next(i) {
-    const n = i + this.totalhands;
-    return (this.capacity + n) % this.capacity;
+  next(n) {
+    const base = n * this.slotsperhand;
+    return base + ((this.hands[n] + 1) % this.slotsperhand);
   }
 
-  cur(i) {
-    return (this.capacity + i) % this.capacity;
+  cur(n) {
+    const base = n * this.slotsperhand;
+    return base + (this.hands[n] % this.slotsperhand);
   }
 
-  prev(i) {
-    const p = i - this.totalhands;
-    return (this.capacity + p) % this.capacity;
+  prev(n) {
+    const base = n * this.slotsperhand;
+    return base + ((this.hands[n] - 1) % this.slotsperhand);
   }
 
   bound(i, min, max) {
     // min inclusive, max exclusive
     i = i < min ? min : i;
-    i = i > max ? max - 1 : i;
+    i = i >= max ? max - 1 : i;
     return i;
   }
 
   head(n) {
     n = this.bound(n, 0, this.totalhands);
-    const h = this.hands[n];
-    return this.cur(h);
+    return this.cur(n);
   }
 
   incrHead(n) {
     n = this.bound(n, 0, this.totalhands);
-    this.hands[n] = this.next(this.hands[n]);
+    this.hands[n] = this.next(n);
     return this.hands[n];
   }
 
   decrHead(n) {
     n = this.bound(n, 0, this.totalhands);
-    this.hands[n] = this.prev(this.hands[n]);
+    this.hands[n] = this.prev(n);
     return this.hands[n];
   }
 
-  get size() {
-    return this.store.size;
+  size() {
+    return this.store.size();
   }
 
   evict(n, c) {
-    logd("evict start, head/num/size", this.head(n), n, this.size);
+    logd("evict start, head/num/size", this.head(n), n, this.size());
     const start = this.head(n);
     let h = start;
     // countdown lifetime of alive slots as rb is sweeped for a dead slot
     do {
       const entry = this.rb[h];
       if (entry == null) return true; // empty slot
-      entry.count -= c;
+
+      entry.count -= c; // age down this slot
       if (entry.count <= 0) {
-        // dead slot
         logd("evict", h, entry);
-        this.store.delete(entry.key);
+        this.store.delete(entry.key); // evict if slot dead
         this.rb[h] = null;
-        return true;
+        return true; // slot at hands[n] is free
       }
       h = this.incrHead(n);
-    } while (h !== start); // one sweep complete?
+    } while (h !== start); // one sweep complete
 
     return false; // no free slot
   }
@@ -123,7 +123,7 @@ export class Clock {
 
     const cached = this.store.get(k);
     if (cached != null) {
-      // update entry
+      // update cached entry
       cached.value = v;
       this.boost(cached.pos, c);
       return true;
@@ -136,10 +136,8 @@ export class Clock {
 
     if (!hasSlot) return false;
 
-    const ringv = { key: k, count: Math.min(c, this.maxcount) };
-    const storev = { value: v, pos: h };
-    this.rb[h] = ringv;
-    this.store.set(k, storev);
+    this.rb[h] = this.mkfreq(k, c);
+    this.store.set(k, this.mkvalue(v, h));
 
     this.incrHead(num);
     return true;
@@ -164,6 +162,14 @@ export class Clock {
     const max = this.totalhands; // exclusive
     const min = 0; // inclusive
     return Math.floor(Math.random() * (max - min)) + min;
+  }
+
+  mkfreq(k, c) {
+    return { key: k, count: Math.min(c, this.maxcount) };
+  }
+
+  mkvalue(v, i) {
+    return { value: v, pos: i };
   }
 }
 
