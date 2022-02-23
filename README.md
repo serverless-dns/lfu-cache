@@ -15,6 +15,8 @@ for point queries, or by `RangeList` for range queries.
 `lfu.js` serves as the entrypoint to construct and interact with these LFUs.
 
 ```js
+  import { LfuCache, RangeLfu } from "@serverless-dns/lfu.js";
+
   const lfu = new LfuCache("L1", 10)
   lfu.put(1, "a") // 1 -> "a"
   const v = lfu.get("a") // v = "a"

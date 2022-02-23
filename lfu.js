@@ -50,8 +50,30 @@ export class ClockLfu {
   }
 }
 
-// An approximate LFU cache for (integer-range, value) pairs.
+// A constant-time LFU cache for arbitary (key, value) pairs.
 export class RangeLfu {
+  constructor(id, capacity) {
+    this.id = id;
+    const sklevel = log2(capacity);
+
+    this.cache = new O1({
+      cap: capacity,
+      freq: 16,
+      store: () => new RangeList(sklevel),
+    });
+  }
+
+  get(n, freq = 1) {
+    return this.cache.val(mkrange(n, n), freq) || false;
+  }
+
+  put(lo, hi, val, freq = 1) {
+    return this.cache.put(mkrange(lo, hi), val, freq);
+  }
+}
+
+// An approximate LFU cache for (integer-range, value) pairs.
+export class RangeClockLfu {
   constructor(id, capacity) {
     // delete, set, get in skip-lists tend towards O(log n)
     // and so, higher the n, the lesser the performance hit.

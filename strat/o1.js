@@ -34,12 +34,15 @@ export class O1 {
     this.store = opts.store();
     // tracks all cached entries of a particular age in a doubly linked-list
     this.freqslots = this.mkfreqslots();
+
+    logd("created with cap", this.capacity, "freq", this.maxfrequency);
   }
 
   // put sets value v against key k with frequency f
   put(k, v, f = 1) {
     const cached = this.store.get(k);
     if (cached) {
+      logd("put; cached-entry", k, "freq", cached.freq);
       cached.freq += f;
       cached.value = v;
       this.move(cached.freq, cached.node);
@@ -55,11 +58,15 @@ export class O1 {
         if (demote) this.push(i - f, demote);
       }
       const youngest = this.pop(0);
+
+      logd("at capacity, evict", youngest.key);
       // nothing to evict, no capacity to execute this put
       if (youngest == null) return false;
       // evict the most youngest cache entry
       this.store.delete(youngest.key);
     }
+
+    logd("put; new-entry", k, "freq", f);
     const node = this.push(f, mknode(k));
     this.store.set(k, mkentry(node, v, f));
     return true;
@@ -69,10 +76,12 @@ export class O1 {
   val(k, f = 1) {
     const entry = this.store.get(k);
     if (entry) {
+      logd("cache-hit; cached-entry", k, "freq", entry.freq);
       entry.freq += f;
       this.move(entry.freq, entry.node);
       return entry.value;
     }
+    logd("cache-miss", k);
     return null;
   }
 
@@ -172,4 +181,9 @@ function mkentry(n, v, f) {
     value: v,
     freq: f,
   };
+}
+
+function logd(...rest) {
+  const debug = false;
+  if (debug) console.debug("O1", ...rest);
 }
