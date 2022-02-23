@@ -34,6 +34,7 @@ export class Clock {
 
     cap = this.bound(cap, mincap, maxcap);
     this.capacity = 2 ** Math.round(Math.log2(cap)); // always power-of-2
+    slotsperhand = 2 ** Math.round(Math.log2(slotsperhand));
     // a ring buffer
     this.rb = new Array(this.capacity);
     // cache backed by this store
@@ -41,12 +42,12 @@ export class Clock {
 
     // maxlives per cached kv entry
     this.maxcount = this.bound(maxlife, minlives, maxlives);
-    this.slotsperhand = 2 ** Math.round(Math.log2(slotsperhand));
     // limit worst-case slot sweeps per-hand to a constant )
     this.totalhands = Math.max(
       minslots,
-      Math.round(this.capacity / this.slotsperhand)
+      Math.round(this.capacity / slotsperhand)
     );
+    this.slotsperhand = this.capacity / this.totalhands;
 
     // k-hands for power-of-k admissions
     this.hands = new Array(this.totalhands);

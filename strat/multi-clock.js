@@ -36,7 +36,7 @@ export class MultiClock {
 
     this.clocks = [];
     this.idx = [];
-    this.store = opts.store();
+    this.store = opts.store;
 
     this.expand();
 
@@ -71,7 +71,7 @@ export class MultiClock {
       this.clockcap,
       this.slotsperhand,
       this.maxlife,
-      this.store
+      this.store()
     );
   }
 
