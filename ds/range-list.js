@@ -20,7 +20,7 @@ export class RangeList {
     this.maxlevel = maxlevel;
 
     // if this.maxlevel = 16 (0x10), then:
-    // maxlevel = 0x8000 or 0b1000_0000_0000 (= 2**15)
+    // maxflips = 0x8000 or 0b1000_0000_0000 (= 2**15)
     // bitmask => 0x4000 or 0b0100_0000_0000 (= 2**14)
     this.maxflips = Math.pow(2, this.maxlevel - 1);
     this.bitmask = Math.pow(2, this.maxlevel - 2);
@@ -170,10 +170,9 @@ export class RangeList {
 
   // faster coinflips from ticki.github.io/blog/skip-lists-done-right
   randomLevel() {
-    // TODO: Math.trunc instead of Math.floor?
     // probability(c) heads (ex: c=4 => hhhh) is given by 1/(2**c)
-    // coinflips => (0, maxflips]; 0 inclusive, maxflips exclusive
-    let coinflips = Math.floor(Math.random() * this.maxflips);
+    // coinflips => [0, maxflips); 0 inclusive, maxflips exclusive
+    let coinflips = (Math.random() * this.maxflips) | 0;
     let level = 0;
     do {
       // msb more random than lsb;

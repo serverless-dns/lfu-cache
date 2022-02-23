@@ -52,7 +52,7 @@ export class O1 {
       for (let i = 1; i < this.maxfrequency; i++) {
         const demote = this.pop(i);
         // age down the youngest in all freqslot queues
-        if (demote) this.move(i - f, demote);
+        if (demote) this.push(i - f, demote);
       }
       const youngest = this.pop(0);
       // nothing to evict, no capacity to execute this put
@@ -60,7 +60,7 @@ export class O1 {
       // evict the most youngest cache entry
       this.store.delete(youngest.key);
     }
-    const node = this.push(f, k);
+    const node = this.push(f, mknode(k));
     this.store.set(k, mkentry(node, v, f));
     return true;
   }
@@ -80,7 +80,7 @@ export class O1 {
     return this.store.size();
   }
 
-  // move moves node from its current freqslot queue to freqslot, f
+  // moves node from its current freqslot queue to the front of freqslot, f
   move(f, node) {
     this.delink(node);
     const c = this.bound(f - 1, 0, this.maxfrequency);
@@ -89,10 +89,10 @@ export class O1 {
   }
 
   // push adds k to the front of freqslot queue, f
-  push(f, k) {
+  push(f, node) {
     const c = this.bound(f - 1, 0, this.maxfrequency);
+    // c may be equal to f, in that case, node is moved to the front
     const q = this.freqslots[c];
-    const node = mknode(k);
     return this.link(q, node);
   }
 
@@ -108,8 +108,8 @@ export class O1 {
 
   // deletes node from its current freqslot queue
   delink(node) {
-    if (node.next) node.next.prev = node.prev;
-    if (node.prev) node.prev.next = node.next;
+    node.next.prev = node.prev;
+    node.prev.next = node.next;
     return node;
   }
 
