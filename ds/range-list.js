@@ -76,6 +76,10 @@ export class RangeList {
       node.prev[i] = this.head;
       node.next[i] = this.tail;
       this.head.next[i] = node;
+      // not needed given the current iteration order in xget never
+      // goes from [ tail <==prev== head ] or [ tail ==next==> head ]
+      // skip: this.head.prev[i] = tail
+      // skip: this.tail.next[i] = head
       this.tail.prev[i] = node;
       this.level += 1;
     }
@@ -86,8 +90,8 @@ export class RangeList {
   // get gets the value stored against an integer range (lo, hi)
   get(range) {
     const d = this.xget(range.lo);
-    if (d && d.value) return d.value;
-    return null;
+    if (d == null && d.value == null) return null;
+    return d.value;
   }
 
   // xget gets the skip-list node that has integer 'n' in its range
