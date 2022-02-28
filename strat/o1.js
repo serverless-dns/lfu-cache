@@ -19,7 +19,9 @@ function defaults() {
   };
 }
 
-// O1 implements an O(1) LFU as described in arxiv.org/pdf/2110.11602.pdf
+// O1 roughly impls an O(1) LFU as described in arxiv.org/pdf/2110.11602.pdf
+// Reminiscent of S4LRU but with var no of LRUs "freqslots" (not limited to 4)
+// news.ycombinator.com/item?id=7692622
 export class O1 {
   constructor(overrides) {
     const opts = Object.assign(defaults(), overrides);
@@ -28,7 +30,7 @@ export class O1 {
 
     // max entries in the cache
     this.capacity = this.bound(opts.cap, mincap, maxcap);
-    // max lifetime / frequency of a cached entry
+    // max no. of freqslots
     this.maxfrequency = this.bound(opts.freq, minfreq, maxfreq);
     // stores cached values
     this.store = opts.store();
@@ -43,6 +45,7 @@ export class O1 {
     const cached = this.store.get(k);
     if (cached) {
       logd("put; cached-entry", k, "freq", cached.freq);
+      // freq of an entry can be well beyond maxfrequency
       cached.freq += f;
       cached.value = v;
       this.move(cached.freq, cached.node);
@@ -52,7 +55,7 @@ export class O1 {
     // cache at capacity, evict youngest cached entry, age down others
     if (this.store.size() >= this.capacity) {
       // iterate from youngest to oldest freqslot queues
-      for (let i = 1; i < this.maxfrequency; i++) {
+      for (let i = 2; i < this.maxfrequency; i++) {
         const demote = this.pop(i);
         // age down the youngest in all freqslot queues
         if (demote) this.push(i - f, demote);
@@ -76,12 +79,27 @@ export class O1 {
   val(k, f = 1) {
     const entry = this.store.get(k);
     if (entry) {
-      logd("cache-hit; cached-entry", k, "freq", entry.freq);
+      logd("cache-hit; cached-entry:", k, "freq:", entry.freq);
       entry.freq += f;
       this.move(entry.freq, entry.node);
       return entry.value;
     }
     logd("cache-miss", k);
+    return null;
+  }
+
+  // search searches for key k, starting at cursor it
+  search(k, it, f = 1) {
+    const cursor = it != null ? it.cursor : null;
+    const ans = this.store.search(k, cursor);
+    if (ans) {
+      const entry = ans.value;
+      logd("search-hit; key:", k, "freq:", entry.freq);
+      entry.freq += f;
+      this.move(entry.freq, entry.node);
+      return mkcursor(ans, entry.value);
+    }
+    logd("search-miss", k);
     return null;
   }
 
@@ -180,6 +198,13 @@ function mkentry(n, v, f) {
     node: n,
     value: v,
     freq: f,
+  };
+}
+
+function mkcursor(rlnode, value) {
+  return {
+    value: value,
+    cursor: rlnode,
   };
 }
 

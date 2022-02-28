@@ -23,6 +23,10 @@ export class HashMap {
     return this.m.delete(k);
   }
 
+  search(k, _) {
+    return this.m.get(k);
+  }
+
   clear() {
     this.m.clear();
   }

@@ -6,14 +6,13 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-// RangeList stores values against integer-ranges (low, high). It implements
-// a skip-list to store the incoming ranges in a sorted order. The ranges
-// to be inserted must not overlap with any existing ranges: That is,
-// inserting (5, 15) or (7, 9) in a list with (1, 10) already in it,
-// is an illegal, unsupported operation. Ranges can be of arbitary spawns,
-// though, the min and max supported values are governed by
-// Number.MIN_SAFE_INTEGER + 2 and Number.MAX_SAFE_INTEGER - 2.
-// ref: archive.is/nl3G8 (impl) and archive.is/ffCDr (analysis)
+// RangeList stores values against integer-ranges (low, high). Sorts
+// incoming ranges in a skip-list. The incoming ranges must not overlap
+// with any existing range already in the skip-list: That is, inserting
+// (5, 15) or (7, 9) in a list with (1, 10) already in it, is undefined,
+// operation. Ranges can be of arbitary spawns, with (min, max) =>
+// (Number.MIN_SAFE_INTEGER + 2, Number.MAX_SAFE_INTEGER - 2)
+// refs: archive.is/nl3G8 archive.is/ffCDr
 export class RangeList {
   constructor(maxlevel = 16) {
     this.init();
@@ -89,16 +88,19 @@ export class RangeList {
 
   // get gets the value stored against an integer range (lo, hi)
   get(range) {
-    const d = this.xget(range.lo);
-    if (d == null && d.value == null) return null;
+    const d = this.xget(range.lo, this.head);
+    if (d == null || d.value == null) return null;
     return d.value;
   }
 
+  // search searches for key k, starting at cursor, cursornode
+  search(range, cursornode) {
+    return this.xget(range.lo, this.lca(cursornode, range.lo));
+  }
+
   // xget gets the skip-list node that has integer 'n' in its range
-  xget(n) {
-    let i = this.level;
-    // exclude head from search
-    let node = this.head;
+  xget(n, node) {
+    let i = node.next.length - 1;
     while (i >= 0 && node !== this.tail) {
       const cur = node.next[i];
       const eq = nodeContainsN(cur, n);
@@ -126,7 +128,7 @@ export class RangeList {
   }
 
   delete(range) {
-    const node = this.xget(range.lo);
+    const node = this.xget(range.lo, this.head);
     if (node == null) return false;
 
     // delete node from all its levels
@@ -140,6 +142,19 @@ export class RangeList {
     this.length -= 1;
 
     return true;
+  }
+
+  // any lower common ancestor of node and n, a number
+  lca(node, n) {
+    if (node == null) return this.head;
+
+    // keep iterating backwards, till node.range is <= n
+    do {
+      if (!nodeGreaterThanN(node, n)) break;
+      node = node.prev[node.prev.length - 1];
+    } while (node !== this.tail);
+
+    return node; // may be tail, in which case, there's no lca
   }
 
   entries() {

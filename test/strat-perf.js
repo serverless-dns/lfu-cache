@@ -6,41 +6,46 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+import { MultiClock } from "../strat/multi-clock.js";
+import { O1 } from "../strat/o1.js";
 import { HashMap } from "../ds/map.js";
-import { RangeList, mkrange } from "../ds/range-list.js";
 
 const size = 1_000_000;
-const rlExpectedP99ForSize1M = 1; // ms
-const rlExpectedSumForSize1M = 5000; // ms
-const hmExpectedP99ForSize1M = 0; // ms
-const hmExpectedSumForSize1M = 500; // ms
+const o1ExpectedP99ForSize1M = 0; // ms
+const o1ExpectedSumForSize1M = 800; // ms
+const mcExpectedP99ForSize1M = 1; // ms
+const mcExpectedSumForSize1M = 1400; // ms
 
 (async (main) => {
-  const tag = "DsPerfMain";
+  const tag = "StratPerfMain";
   const t1 = Date.now();
   console.log(tag, t1, "begin");
 
   const n = size;
-  const out = await Promise.allSettled([rangelistPerf(n), hashMapPerf(n)]);
+  const out = await Promise.allSettled([o1Perf(n), mclockPerf(n)]);
   const t2 = Date.now();
 
   console.log(tag, "outputs", out);
   console.log(tag, t2, "end", t2 - t1 + "ms");
 })();
 
-async function rangelistPerf(n) {
-  const tag = "RangeListPerf";
+async function o1Perf(n) {
+  const tag = "O1Perf";
   console.log(tag, "---ack---");
 
-  const s = new RangeList(Math.log2(n) | 0);
+  const s = new O1({
+    cap: n,
+    freq: 16,
+    store: () => new HashMap(),
+  });
 
   const r = spacedinput(n);
 
   const ts1 = Date.now();
-  r.forEach((i) => s.set(mkrange(i, i + 1), "r" + i));
+  r.forEach((i) => s.put(i, "o1" + i));
   const ts2 = Date.now();
 
-  console.log(tag, r.length, "setup duration", ts2 - ts1 + "ms");
+  console.log(tag, "put duration", ts2 - ts1 + "ms");
 
   const t = [];
   const miss = [];
@@ -48,7 +53,7 @@ async function rangelistPerf(n) {
   for (let i = 0; i < r.length; i++) {
     const q = r[i];
     const t1 = Date.now();
-    x = s.get(mkrange(q, q), x);
+    x = s.val(q);
     const t2 = Date.now();
 
     t.push(t2 - t1);
@@ -56,45 +61,42 @@ async function rangelistPerf(n) {
     if (x == null) miss.push(i);
   }
 
-  const td = [];
-  for (let i = 0; i < r.length; i++) {
-    const q = r[i];
-    const t1 = Date.now();
-    s.delete(mkrange(q, q));
-    const t2 = Date.now();
-
-    td.push(t2 - t1);
-  }
-
   logmissing(tag, miss);
-  logquantiles(tag, t, rlExpectedP99ForSize1M);
-  logsums(tag, t, td, rlExpectedSumForSize1M);
+  logquantiles(tag, t, o1ExpectedP99ForSize1M);
+  logsums(tag, t, o1ExpectedSumForSize1M);
 
   console.log(tag, "---fin---");
 
   return tag + ":done";
 }
 
-async function hashMapPerf(n) {
-  const tag = "HashMapPerf";
+async function mclockPerf(n) {
+  const tag = "MultiClockPerf";
   console.log(tag, "---ack---");
 
-  const s = new HashMap();
+  const s = new MultiClock({
+    cap: n,
+    store: () => new HashMap(),
+  });
 
   const r = spacedinput(n);
 
   const ot1 = Date.now();
-  r.forEach((i) => s.set(i, "m" + i));
+  const noput = new Set();
+  r.forEach((i) => {
+    const ok = s.put(i, "mc" + i);
+    if (!ok) noput.add(i);
+  });
   const ot2 = Date.now();
 
-  console.log(tag, "setup duration", ot2 - ot1 + "ms");
+  console.log(tag, "put duration", ot2 - ot1 + "ms", "#noputs", noput.size);
 
   const t = [];
-  const miss = [];
+  let miss = [];
   for (let i = 0; i < r.length; i++) {
     const q = r[i];
     const t1 = Date.now();
-    const x = s.get(q);
+    const x = s.val(q);
     const t2 = Date.now();
 
     t.push(t2 - t1);
@@ -102,19 +104,11 @@ async function hashMapPerf(n) {
     if (x == null) miss.push(i);
   }
 
-  const td = [];
-  for (let i = 0; i < r.length; i++) {
-    const q = r[i];
-    const t1 = Date.now();
-    s.delete(q);
-    const t2 = Date.now();
+  if (noput.size) miss = miss.filter((i) => !noput.has(i));
 
-    td.push(t2 - t1);
-  }
-
-  logmissing(tag, miss);
-  logquantiles(tag, t, hmExpectedP99ForSize1M);
-  logsums(tag, t, td, hmExpectedSumForSize1M);
+  logmissing(tag, miss, s.size());
+  logquantiles(tag, t, mcExpectedP99ForSize1M);
+  logsums(tag, t, mcExpectedSumForSize1M);
 
   console.log(tag, "---fin---");
 
@@ -139,9 +133,9 @@ function spacedinput(n) {
   return r;
 }
 
-function logmissing(id, m) {
-  const n = m.length;
-  console.log(id, n, "missing", m.slice(0, 10));
+function logmissing(id, m, csize = size) {
+  const n = size - (m.length + csize);
+  console.log(id, n, "missing", m.slice(0, 10), "...", m.length);
   console.assert(n === 0);
 }
 
@@ -163,11 +157,10 @@ function logquantiles(id, t, expectedMaxP99) {
   console.assert(p99 <= expectedMaxP99);
 }
 
-function logsums(id, tg, td, expectedMaxP99) {
+function logsums(id, tg, expectedMaxP99) {
   const n = tg.length;
   const tget = tg.reduce((a, s) => a + s);
-  const tdel = td.reduce((a, s) => a + s);
 
-  console.log(id, "n:", n, "| get:", tget + "ms", "| del:", tdel + "ms");
+  console.log(id, "n:", n, "| get:", tget + "ms <=", expectedMaxP99 + "ms");
   console.assert(tget <= expectedMaxP99);
 }

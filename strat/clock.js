@@ -8,9 +8,11 @@
 
 const minlives = 1 << 0; // 1
 const maxlives = 1 << 14; // 16,384
-const mincap = 1 << 5; // 32
+const mincap = 1 << 4; // 16
 const maxcap = 1 << 30; // 1,073,741,824
-const minslots = 1 << 1; // 2
+const minslots = 1 << 3; // 8, must be less than mincap
+const maxslots = 1 << 8; // 256
+const minhands = 1 << 1; // 2
 
 // Clock implements a LFU-like cache with "clock-hands" that sweep
 // just the once over a ring-buffer to find a slot for an entry (key,
@@ -33,25 +35,25 @@ export class Clock {
     if (store == null) throw new Error("missing underlying store");
 
     cap = this.bound(cap, mincap, maxcap);
-    this.capacity = 2 ** Math.round(Math.log2(cap)); // always power-of-2
-    slotsperhand = 2 ** Math.round(Math.log2(slotsperhand));
+    slotsperhand = this.bound(slotsperhand, minslots, maxslots);
+
+    // maxlives per cached kv entry
+    this.maxcount = this.bound(maxlife, minlives, maxlives);
+
+    // limit worst-case slot sweeps per-hand to a constant )
+    this.totalhands = Math.max(minhands, Math.round(cap / slotsperhand));
+    this.slotsperhand = Math.round(cap / this.totalhands);
+    this.capacity = this.slotsperhand * this.totalhands;
+
     // a ring buffer
     this.rb = new Array(this.capacity);
     // cache backed by this store
     this.store = store;
-
-    // maxlives per cached kv entry
-    this.maxcount = this.bound(maxlife, minlives, maxlives);
-    // limit worst-case slot sweeps per-hand to a constant )
-    this.totalhands = Math.max(
-      minslots,
-      Math.round(this.capacity / slotsperhand)
-    );
-    this.slotsperhand = this.capacity / this.totalhands;
-
     // k-hands for power-of-k admissions
     this.hands = new Array(this.totalhands);
     this.hands.fill(0);
+
+    logd("sz", this.capacity, "hd", this.totalhands, "sl", this.slotsperhand);
   }
 
   next(n) {
@@ -71,7 +73,7 @@ export class Clock {
 
   bound(i, min, max) {
     // min inclusive, max exclusive
-    i = i < min ? min : i;
+    i = i <= min ? min : i;
     i = i >= max ? max - 1 : i;
     return i;
   }
@@ -155,6 +157,20 @@ export class Clock {
     return r.value;
   }
 
+  // search searches for key k, starting at cursor _
+  search(k, _, c = 1) {
+    const v = this.val(k, c);
+    return mkcursor(null, v);
+  }
+
+  entries() {
+    const kv = [];
+    for (const e of this.store.entries()) {
+      kv.push(e);
+    }
+    return kv;
+  }
+
   boost(pos, amp = 0) {
     const me = this.rb[pos];
     me.count = Math.min(me.count + amp, this.maxcount);
@@ -170,9 +186,16 @@ export class Clock {
     return { key: k, count: Math.min(c, this.maxcount) };
   }
 
-  mkvalue(v, i) {
-    return { value: v, pos: i };
+  mkvalue(v, p) {
+    return { value: v, pos: p };
   }
+}
+
+function mkcursor(_, value) {
+  return {
+    value: value,
+    cursor: _, // no cursor in clocks
+  };
 }
 
 function logd(...rest) {

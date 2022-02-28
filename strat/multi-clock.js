@@ -11,14 +11,13 @@ import { Clock } from "./clock.js";
 function defaults() {
   return {
     cap: 64,
-    handsperclock: 2,
-    slotsperhand: 256,
     maxlife: 32,
+    maxsweep: 256,
     store: null,
   };
 }
 
-// Manages multiple Clocks that expand in size upto to total capacity.
+// Manages multiple Clocks that expand in size upto tototal capacity.
 // Roughly, it is similar to, but not quite, a tiered vector of Clocks:
 // www.cs.brown.edu/cgc/jdsl/papers/tiered-vector.pdf
 export class MultiClock {
@@ -27,12 +26,19 @@ export class MultiClock {
 
     if (opts.store == null) throw new Error("missing underlying store");
 
-    this.slotsperhand = opts.slotsperhand; // must be power-of-2
-    this.handsperclock = opts.handsperclock;
+    this.totalclocks = Math.round(Math.log10(opts.cap));
+
+    // opts.cap must be divisible by totalclocks
+    opts.cap = multipleofn(opts.cap, this.totalclocks);
+    // ccap must be divisible by 2
+    const ccap = multipleofn(opts.cap / this.totalclocks, 2);
+    // must be divisible by maxsweep
+    const maxsweep = ccap > opts.maxsweep ? opts.maxsweep : ccap / 2;
+
+    this.clockcap = multipleofn(ccap, maxsweep);
+    this.totalcap = this.totalclocks * this.clockcap;
+    this.handsperclock = Math.max(2, this.clockcap / maxsweep);
     this.maxlife = opts.maxlife;
-    this.clockcap = this.slotsperhand * this.handsperclock;
-    this.totalcap = 2 ** Math.ceil(Math.log2(opts.cap)); // power-of-2
-    this.totalclocks = Math.ceil(this.totalcap / this.clockcap);
 
     this.clocks = [];
     this.idx = [];
@@ -40,15 +46,7 @@ export class MultiClock {
 
     this.expand();
 
-    logd("sz", this.totalcap, "n", this.totalclocks, "l", this.clockcap);
-  }
-
-  iterlimit() {
-    if (this.expandable()) {
-      return Math.ceil(this.totalclocks * 0.1);
-    } else {
-      return Math.ceil(this.totalclocks * 0.05);
-    }
+    logd("sz", this.totalcap, "n", this.totalclocks, "cc", this.clockcap);
   }
 
   expandable() {
@@ -104,6 +102,12 @@ export class MultiClock {
     return [v, clockidx];
   }
 
+  // search searches for key k, starting at cursor _
+  search(k, _, c = 1) {
+    const v = this.val(k, c);
+    return mkcursor(null, v);
+  }
+
   put(k, v, c = 1) {
     if (k == null || v == null) return false;
 
@@ -117,18 +121,15 @@ export class MultiClock {
     // reduce life of cached-items iff no expansion is possible
     // that is, find an empty slot without aging cached-items
     const down = this.expandable() ? 0 : c;
-    const limit = this.iterlimit();
     // put value (v) in an empty slot, if any, in existing clocks
     for (const i of this.idx) {
       const x = this.clocks[i];
       const ok = x.put(k, v, down);
-      // down may be 0, so if put succeeds, reinstate orig (c)
-      if (ok && c !== down) {
-        x.val(k, c);
+      if (ok) {
+        // down is 0, reinstate count (c)
+        if (c !== down) x.val(k, c);
         return true;
       }
-      // do not sweep any more clocks for a slot
-      if (i >= limit) break;
     }
 
     // make a new clock, and put value (v) with life (c)
@@ -148,8 +149,16 @@ export class MultiClock {
     return s;
   }
 
+  entries() {
+    let kv = [];
+    for (const c of this.clocks) {
+      kv = kv.concat(c.entries());
+    }
+    return kv;
+  }
+
   // stackoverflow.com/a/12646864
-  shuffle(odds = 2) {
+  shuffle(odds = 5) {
     if (!this.yes(odds)) return;
 
     for (let i = this.idx.length - 1; i > 0; i--) {
@@ -161,16 +170,27 @@ export class MultiClock {
   }
 
   yes(when) {
-    const yes = true;
-    const no = false;
+    const y = true;
+    const n = false;
     const len = when;
 
     const max = len + 1; // exclusive
     const min = 1; // inclusive
     const rand = Math.floor(Math.random() * (max - min)) + min;
 
-    return rand % len === 0 ? yes : no;
+    return rand % len === 0 ? y : n;
   }
+}
+
+function mkcursor(_, value) {
+  return {
+    value: value,
+    cursor: _, // unused in clocks
+  };
+}
+
+function multipleofn(i, n) {
+  return i + (n - (i % n));
 }
 
 function logd(...rest) {
