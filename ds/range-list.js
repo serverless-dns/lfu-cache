@@ -15,8 +15,9 @@
 // refs: archive.is/nl3G8 archive.is/ffCDr
 export class RangeList {
   constructor(maxlevel = 16) {
+    this.maxlevel = Math.round(maxlevel);
+
     this.init();
-    this.maxlevel = maxlevel;
 
     // if this.maxlevel = 16 (0x10), then:
     // maxflips = 0x8000 or 0b1000_0000_0000 (= 2**15)
@@ -38,12 +39,17 @@ export class RangeList {
 
     this.level = 0;
     this.length = 0;
+
+    // stats
+    this.levelhisto = new Array(this.maxlevel);
+    this.levelhisto.fill(0);
+    this.avgGetIter = 0;
   }
 
   // FIXME: reject overlapping ranges
-  set(range, aux) {
+  set(range, aux, selfcorrect = false) {
     const node = mknode(range, aux);
-    const lr = this.randomLevel();
+    const lr = this.randomLevel(selfcorrect);
     let cur = this.head;
     const slots = [];
     // find slots at all levels to fit the incoming node in
@@ -67,6 +73,8 @@ export class RangeList {
       node.prev[i] = predecessor;
       predecessor.next[i] = node;
       successor.prev[i] = node;
+
+      this.levelhisto[i] += 1;
     }
 
     // when the incoming node's level is greater than the skip-list's level,
@@ -81,6 +89,7 @@ export class RangeList {
       // skip: this.tail.next[i] = head
       this.tail.prev[i] = node;
       this.level += 1;
+      this.levelhisto[i] += 1;
     }
 
     this.length += 1;
@@ -100,8 +109,10 @@ export class RangeList {
 
   // xget gets the skip-list node that has integer 'n' in its range
   xget(n, node) {
+    let c = 0;
     let i = node.next.length - 1;
     while (i >= 0 && node !== this.tail) {
+      c += 1;
       const cur = node.next[i];
       const eq = nodeContainsN(cur, n);
       const lt = nodeLessThanN(cur, n);
@@ -112,6 +123,8 @@ export class RangeList {
       if (eq) {
         // cur is the ans, if it is not the tail node
         // exclude tail, not a valid search result
+        this.avgGetIter =
+          this.avgGetIter > 0 ? Math.round((this.avgGetIter + c) / 2) : c;
         return cur === this.tail ? null : cur;
       } else if (lt) {
         // for the next iteration, lookup siblings of cur
@@ -144,15 +157,16 @@ export class RangeList {
     return true;
   }
 
-  // any lower common ancestor of node and n, a number
+  // any lower common ancestor of node and n, a number;
+  // such that node's range (lo, hi) is _immediately_ less than n
   lca(node, n) {
     if (node == null) return this.head;
 
     // keep iterating backwards, till node.range is <= n
     do {
-      if (!nodeGreaterThanN(node, n)) break;
+      if (nodeLessThanN(node, n)) break;
       node = node.prev[node.prev.length - 1];
-    } while (node !== this.tail);
+    } while (node !== this.head);
 
     return node; // may be tail, in which case, there's no lca
   }
@@ -187,8 +201,10 @@ export class RangeList {
     return mknode(maxr, "tail");
   }
 
-  // faster coinflips from ticki.github.io/blog/skip-lists-done-right
-  randomLevel() {
+  randomLevel(selfcorrect) {
+    const cal = selfcorrect ? this.levelup() : -1;
+    if (cal >= 0) return cal;
+
     // probability(c) heads (ex: c=4 => hhhh) is given by 1/(2**c)
     // coinflips => [0, maxflips); 0 inclusive, maxflips exclusive
     let coinflips = (Math.random() * this.maxflips) | 0;
@@ -207,6 +223,17 @@ export class RangeList {
     } while (coinflips > 0);
 
     return level;
+  }
+
+  levelup() {
+    let sum = 0;
+    for (let i = this.levelhisto.length; i > 0; i--) {
+      const l = this.levelhisto[i - 1] - sum;
+      const exl = Math.round(2 ** -i * this.length);
+      if (exl > l) return i - 1;
+      sum += l;
+    }
+    return -1;
   }
 }
 
@@ -240,6 +267,18 @@ function nodeGreaterThanN(node, n) {
 
 function nodeLessThanN(node, n) {
   return node.range.hi < n;
+}
+
+// a perfectly-balanced clone just like Thanos would want it
+export function balancedCopy(other) {
+  const s = new RangeList(Math.log2(other.length));
+  let it = other.head.next[0];
+  while (it !== other.tail) {
+    // ref archive.is/kwhnG
+    s.set(it.range, it.value, /* self-correct*/ true);
+    it = it.next[0];
+  }
+  return s;
 }
 
 function logd(...rest) {

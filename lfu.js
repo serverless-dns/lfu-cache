@@ -121,5 +121,5 @@ export class RangeClockLfu {
 }
 
 function log2(n) {
-  return Math.floor(Math.log2(n));
+  return Math.round(Math.log2(n));
 }

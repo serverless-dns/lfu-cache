@@ -7,7 +7,7 @@
  */
 
 import { HashMap } from "../ds/map.js";
-import { RangeList, mkrange } from "../ds/range-list.js";
+import { RangeList, mkrange, balancedCopy } from "../ds/range-list.js";
 
 const size = 1_000_000;
 const rlExpectedP99ForSize1M = 1; // ms
@@ -21,7 +21,11 @@ const hmExpectedSumForSize1M = 500; // ms
   console.log(tag, t1, "begin");
 
   const n = size;
-  const out = await Promise.allSettled([rangelistPerf(n), hashMapPerf(n)]);
+  const out = await Promise.allSettled([
+    rangelistPerf(n),
+    hashMapPerf(n),
+    balancedRangeListPerf(n),
+  ]);
   const t2 = Date.now();
 
   console.log(tag, "outputs", out);
@@ -32,7 +36,7 @@ async function rangelistPerf(n) {
   const tag = "RangeListPerf";
   console.log(tag, "---ack---");
 
-  const s = new RangeList(Math.log2(n) | 0);
+  const s = new RangeList(log2(n));
 
   const r = spacedinput(n);
 
@@ -40,15 +44,14 @@ async function rangelistPerf(n) {
   r.forEach((i) => s.set(mkrange(i, i + 1), "r" + i));
   const ts2 = Date.now();
 
-  console.log(tag, r.length, "setup duration", ts2 - ts1 + "ms");
+  console.log(tag, "setup duration", ts2 - ts1 + "ms");
 
   const t = [];
   const miss = [];
-  let x = null;
   for (let i = 0; i < r.length; i++) {
     const q = r[i];
     const t1 = Date.now();
-    x = s.get(mkrange(q, q), x);
+    const x = s.get(mkrange(q, q));
     const t2 = Date.now();
 
     t.push(t2 - t1);
@@ -56,19 +59,88 @@ async function rangelistPerf(n) {
     if (x == null) miss.push(i);
   }
 
+  console.log(tag, "get:avg(nodes-visited)", log2(n), "~=", s.avgGetIter);
+
   const td = [];
+  const missd = [];
   for (let i = 0; i < r.length; i++) {
     const q = r[i];
     const t1 = Date.now();
-    s.delete(mkrange(q, q));
+    const ok = s.delete(mkrange(q, q));
     const t2 = Date.now();
+
+    if (!ok) missf.push(i);
 
     td.push(t2 - t1);
   }
 
-  logmissing(tag, miss);
+  logmissing(tag + " get:", miss);
+  logmissing(tag + " del:", missd);
   logquantiles(tag, t, rlExpectedP99ForSize1M);
   logsums(tag, t, td, rlExpectedSumForSize1M);
+
+  console.log(tag, "---fin---");
+
+  return tag + ":done";
+}
+
+async function balancedRangeListPerf(n) {
+  const tag = "BalancedRangeListPerf";
+  console.log(tag, "---ack---");
+
+  let s = new RangeList(log2(n));
+
+  const r = spacedinput(n);
+
+  const ts1 = Date.now();
+  r.forEach((i) => s.set(mkrange(i, i + 1), "r" + i));
+  const ts2 = Date.now();
+
+  console.log(tag, "setup duration", ts2 - ts1 + "ms");
+
+  const ts3 = Date.now();
+  s = balancedCopy(s);
+  const ts4 = Date.now();
+
+  console.log(tag, "balance duration", ts4 - ts3 + "ms");
+
+  // get values against all valid keys, randomly
+  const t = [];
+  const miss = [];
+  for (let i = 0; i < r.length; i++) {
+    const q = r[i];
+    const t1 = Date.now();
+    const x = s.get(mkrange(q, q));
+    const t2 = Date.now();
+
+    t.push(t2 - t1);
+
+    if (x == null) miss.push(i);
+  }
+
+  console.log(tag, "get:avg(nodes-visited)", log2(n), "~=", s.avgGetIter);
+  s.avgGetIter = 0; // reset
+
+  // search nearby items, upto r.length no. of times
+  const tf = [];
+  const missf = [];
+  for (let j = 0, i = 0, x = null; j < r.length; j++) {
+    i = nearbyInt(i, 100, 0, n);
+
+    const t1 = Date.now();
+    x = s.search(mkrange(i, i), x);
+    const t2 = Date.now();
+    tf.push(t2 - t1);
+
+    if (x == null) missf.push(i);
+  }
+
+  console.log(tag, "find:avg(nodes-visited)", log2(n), "~=", s.avgGetIter);
+
+  logmissing(tag + " get:", miss);
+  logmissing(tag + " find:", missf);
+  logquantiles(tag, t, rlExpectedP99ForSize1M);
+  logsums(tag, t, tf, rlExpectedSumForSize1M);
 
   console.log(tag, "---fin---");
 
@@ -103,16 +175,20 @@ async function hashMapPerf(n) {
   }
 
   const td = [];
+  const missd = [];
   for (let i = 0; i < r.length; i++) {
     const q = r[i];
     const t1 = Date.now();
-    s.delete(q);
+    const ok = s.delete(q);
     const t2 = Date.now();
+
+    if (!ok) missd.push(i);
 
     td.push(t2 - t1);
   }
 
-  logmissing(tag, miss);
+  logmissing(tag + " get:", miss);
+  logmissing(tag + " del:", missd);
   logquantiles(tag, t, hmExpectedP99ForSize1M);
   logsums(tag, t, td, hmExpectedSumForSize1M);
 
@@ -168,6 +244,20 @@ function logsums(id, tg, td, expectedMaxP99) {
   const tget = tg.reduce((a, s) => a + s);
   const tdel = td.reduce((a, s) => a + s);
 
-  console.log(id, "n:", n, "| get:", tget + "ms", "| del:", tdel + "ms");
+  console.log(id, "n:", n, "| get:", tget + "ms", "| del/find:", tdel + "ms");
   console.assert(tget <= expectedMaxP99);
+}
+
+function nearbyInt(i, jump, min, max) {
+  const vec = (Math.random() * jump) | 0;
+  const add = vec % 2 === 0;
+  const n = add ? i + vec : i - vec;
+
+  if (n < min) return min + vec;
+  if (n > max) return max - vec;
+  return n;
+}
+
+function log2(n) {
+  return Math.round(Math.log2(n));
 }

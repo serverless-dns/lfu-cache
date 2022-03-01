@@ -17,8 +17,6 @@ module.exports = {
     sourceType: "module",
   },
 
-  ignorePatterns: ["test/"],
-
   // setup: github.com/prettier/eslint-plugin-prettier
   plugins: ["prettier"],
   rules: {

@@ -61,7 +61,7 @@ async function o1Perf(n) {
     if (x == null) miss.push(i);
   }
 
-  logmissing(tag, miss);
+  logmissing(tag + " val:", miss);
   logquantiles(tag, t, o1ExpectedP99ForSize1M);
   logsums(tag, t, o1ExpectedSumForSize1M);
 
@@ -106,7 +106,7 @@ async function mclockPerf(n) {
 
   if (noput.size) miss = miss.filter((i) => !noput.has(i));
 
-  logmissing(tag, miss, s.size());
+  logmissing(tag + " val:", miss, s.size());
   logquantiles(tag, t, mcExpectedP99ForSize1M);
   logsums(tag, t, mcExpectedSumForSize1M);
 
