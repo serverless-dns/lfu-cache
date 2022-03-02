@@ -1,6 +1,6 @@
 {
   "name": "@serverless-dns/lfu-cache",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "description": "Various LFU cache implementations",
   "main": "lfu.js",
   "type": "module",

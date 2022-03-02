@@ -98,8 +98,8 @@ export class RangeList {
   // get gets the value stored against an integer range (lo, hi)
   get(range) {
     const d = this.xget(range.lo, this.head);
-    if (d == null || d.value == null) return null;
-    return d.value;
+    if (d[0] == null || d[0].value == null) return null;
+    return d[0].value;
   }
 
   // search searches for key k, starting at cursor, cursornode
@@ -125,7 +125,8 @@ export class RangeList {
         // exclude tail, not a valid search result
         this.avgGetIter =
           this.avgGetIter > 0 ? Math.round((this.avgGetIter + c) / 2) : c;
-        return cur === this.tail ? null : cur;
+        // returns [ans-node, iter-position]
+        return cur === this.tail ? [null, cur] : [cur, cur];
       } else if (lt) {
         // for the next iteration, lookup siblings of cur
         node = cur;
@@ -137,11 +138,14 @@ export class RangeList {
       }
     }
 
-    return null;
+    // returns [ans-node, iter-position]
+    return [null, cur];
   }
 
   delete(range) {
-    const node = this.xget(range.lo, this.head);
+    const res = this.xget(range.lo, this.head);
+    const node = res[0];
+
     if (node == null) return false;
 
     // delete node from all its levels
@@ -227,14 +231,14 @@ export class RangeList {
 
   // selects level which is max way off from what is expected
   levelup() {
-    // max-diff between no. of nodes at expected at a level vs current
+    // max-diff between no. of nodes expected at a level vs current
     let maxdiff = 0;
     // level i where max-diff is
     let maxi = -1;
     // tracks total no. of nodes across levels, from higher levels to lower
     let sum = 0;
 
-    // levels are 1 indexed, the array is 0 index, that is,
+    // levels are 1 indexed, arrays are 0 indexed, that is,
     // level[0] => L1, level[1] => L2, level[7] => L8, and so on
     for (let i = this.levelhisto.length; i > 0; i--) {
       // number of nodes that level i
@@ -248,7 +252,7 @@ export class RangeList {
       }
       // a node which is on level[9] (L10) also exists at all other levels,
       // from 0..9 (L1..L10); that is, to get a count of nodes only on
-      // level[0] (L1) but not on other levels, substract out the sum of
+      // level[0] (L1) but not on other levels, subtract out the sum of
       // nodes on all other levels, 1..9 (L2..L10)
       sum += n;
     }

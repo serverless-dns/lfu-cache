@@ -91,16 +91,18 @@ export class O1 {
   // search searches for key k, starting at cursor it
   search(k, it, f = 1) {
     const cursor = it != null ? it.cursor : null;
-    const ans = this.store.search(k, cursor);
+    const res = this.store.search(k, cursor);
+    const ans = res[0];
+    const cur = res[1];
     if (ans) {
       const entry = ans.value;
       logd("search-hit; key:", k, "freq:", entry.freq);
       entry.freq += f;
       this.move(entry.freq, entry.node);
-      return mkcursor(ans, entry.value);
+      return mkcursor(cur, entry.value);
     }
     logd("search-miss", k);
-    return null;
+    return mkcursor(cur, null);
   }
 
   size() {

@@ -40,12 +40,14 @@ async function rangelistPerf(n) {
 
   const r = spacedinput(n);
 
+  // insert (range, value) pairs
   const ts1 = Date.now();
   r.forEach((i) => s.set(mkrange(i, i + 1), "r" + i));
   const ts2 = Date.now();
 
   console.log(tag, "setup duration", ts2 - ts1 + "ms");
 
+  // retrieve values of all valid keys
   const t = [];
   const miss = [];
   for (let i = 0; i < r.length; i++) {
@@ -60,7 +62,25 @@ async function rangelistPerf(n) {
   }
 
   console.log(tag, "get:avg(nodes-visited)", log2(n), "~=", s.avgGetIter);
+  s.avgGetIter = 0; // reset
 
+  // search nearby items, upto r.length no. of times
+  const tf = [];
+  const missf = [];
+  for (let j = 0, i = 0, x = null; j < r.length; j++) {
+    i = nearbyInt(i, 100, 0, n);
+
+    const t1 = Date.now();
+    x = s.search(mkrange(i, i), x)[1];
+    const t2 = Date.now();
+    tf.push(t2 - t1);
+
+    if (x == null) missf.push(i);
+  }
+
+  console.log(tag, "find:avg(nodes-visited)", log2(n), "~=", s.avgGetIter);
+
+  // delete all keys
   const td = [];
   const missd = [];
   for (let i = 0; i < r.length; i++) {
@@ -77,7 +97,7 @@ async function rangelistPerf(n) {
   logmissing(tag + " get:", miss);
   logmissing(tag + " del:", missd);
   logquantiles(tag, t, rlExpectedP99ForSize1M);
-  logsums(tag, t, td, rlExpectedSumForSize1M);
+  logsums(tag, t, tf, rlExpectedSumForSize1M);
 
   console.log(tag, "---fin---");
 
@@ -92,12 +112,14 @@ async function balancedRangeListPerf(n) {
 
   const r = spacedinput(n);
 
+  // insert (range, value) pairs
   const ts1 = Date.now();
   r.forEach((i) => s.set(mkrange(i, i + 1), "r" + i));
   const ts2 = Date.now();
 
   console.log(tag, "setup duration", ts2 - ts1 + "ms");
 
+  // balance rangelist
   const ts3 = Date.now();
   s = balancedCopy(s);
   const ts4 = Date.now();
@@ -128,7 +150,7 @@ async function balancedRangeListPerf(n) {
     i = nearbyInt(i, 100, 0, n);
 
     const t1 = Date.now();
-    x = s.search(mkrange(i, i), x);
+    x = s.search(mkrange(i, i), x)[1];
     const t2 = Date.now();
     tf.push(t2 - t1);
 
@@ -155,12 +177,14 @@ async function hashMapPerf(n) {
 
   const r = spacedinput(n);
 
+  // insert (k, v) pairs
   const ot1 = Date.now();
   r.forEach((i) => s.set(i, "m" + i));
   const ot2 = Date.now();
 
   console.log(tag, "setup duration", ot2 - ot1 + "ms");
 
+  // retrieve values of all valid keys
   const t = [];
   const miss = [];
   for (let i = 0; i < r.length; i++) {
@@ -174,6 +198,7 @@ async function hashMapPerf(n) {
     if (x == null) miss.push(i);
   }
 
+  // delete all keys
   const td = [];
   const missd = [];
   for (let i = 0; i < r.length; i++) {
@@ -254,7 +279,7 @@ function nearbyInt(i, jump, min, max) {
   const n = add ? i + vec : i - vec;
 
   if (n < min) return min + vec;
-  if (n > max) return max - vec;
+  if (n >= max) return max - vec;
   return n;
 }
 
