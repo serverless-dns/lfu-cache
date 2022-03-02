@@ -225,15 +225,34 @@ export class RangeList {
     return level;
   }
 
+  // selects level which is max way off from what is expected
   levelup() {
+    // max-diff between no. of nodes at expected at a level vs current
+    let maxdiff = 0;
+    // level i where max-diff is
+    let maxi = -1;
+    // tracks total no. of nodes across levels, from higher levels to lower
     let sum = 0;
+
+    // levels are 1 indexed, the array is 0 index, that is,
+    // level[0] => L1, level[1] => L2, level[7] => L8, and so on
     for (let i = this.levelhisto.length; i > 0; i--) {
-      const l = this.levelhisto[i - 1] - sum;
+      // number of nodes that level i
+      const n = this.levelhisto[i - 1] - sum;
+      // expected number of nodes at level i, given len of the skip-list
       const exl = Math.round(2 ** -i * this.length);
-      if (exl > l) return i - 1;
-      sum += l;
+      const diff = exl - n;
+      if (diff > maxdiff) {
+        maxdiff = diff;
+        maxi = i - 1;
+      }
+      // a node which is on level[9] (L10) also exists at all other levels,
+      // from 0..9 (L1..L10); that is, to get a count of nodes only on
+      // level[0] (L1) but not on other levels, substract out the sum of
+      // nodes on all other levels, 1..9 (L2..L10)
+      sum += n;
     }
-    return -1;
+    return maxi;
   }
 }
 
