@@ -29,6 +29,7 @@ env:
   GIT_REF: ${{ github.event.inputs.git-ref || github.ref }}
   JS_RUNTIME: 'node'
   NODE_VER: '17.x'
+  DENO_VER: '1.18.2'
 
 jobs:
   lfu-perf:
@@ -57,11 +58,11 @@ jobs:
           node-version: ${{ env.NODE_VER }}
 
       # deno.com/blog/deploy-static-files#example-a-statically-generated-site
-      - name: Install Deno @1.18.2
+      - name: Install Deno @1.18
         if: env.JS_RUNTIME == 'deno'
         uses: denoland/setup-deno@main
         with:
-          deno-version: 1.18.2
+          deno-version: ${{ env.DENO_VER }}
 
       - name: Setup Node
         if: env.JS_RUNTIME == 'node'
@@ -72,17 +73,17 @@ jobs:
       - name: Sanity
         if: success()
         run: |
-          $JS_RUNTIME ./test/lfu-test.js || ( [[ $? -eq 124 ]] && echo "::notice::Timeout OK" )
+          $JS_RUNTIME ./test/lfu-test.js
         shell: bash
 
       - name: DS Perf
         if: success()
         run: |
-          $JS_RUNTIME ./test/ds-perf.js || ( [[ $? -eq 124 ]] && echo "::notice::Timeout OK" )
+          $JS_RUNTIME ./test/ds-perf.js
         shell: bash
 
       - name: Strat Perf
         if: success()
         run: |
-          $JS_RUNTIME ./test/strat-perf.js || ( [[ $? -eq 124 ]] && echo "::notice::Timeout OK" )
+          $JS_RUNTIME ./test/strat-perf.js
         shell: bash
