@@ -11,7 +11,7 @@ by the native `Map` impl, and a restrictive `RangeList` backed by a Skip List.
 
 That is, `Clock.js`, `MultiClock.js`, `O1.js` instances can be backed by either `HashMap`
 for point queries (takes ~500ms for 1M point-queries), or by `RangeList` for range queries
-(takes ~5000ms for 1M range queries; see [`test/ds-perf.js`](test/ds-pref.js)).
+(takes ~5000ms for 1M range queries; see the [`perf workflow`](https://github.com/serverless-dns/lfu-cache/actions/workflows/perf.yml)).
 
 `lfu.js` serves as the entrypoint to construct and interact with these LFUs.
 
