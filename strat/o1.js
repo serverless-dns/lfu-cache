@@ -62,7 +62,7 @@ export class O1 {
       }
       const youngest = this.pop(0);
 
-      logd("at capacity, evict", youngest.key);
+      logd("at capacity, evict", youngest);
       // nothing to evict, no capacity to execute this put
       if (youngest == null) return false;
       // evict the most youngest cache entry
@@ -203,10 +203,10 @@ function mkentry(n, v, f) {
   };
 }
 
-function mkcursor(rlnode, value) {
+function mkcursor(snode, value) {
   return {
-    value: value,
-    cursor: rlnode,
+    value: value, // may be null
+    cursor: snode, // never null
   };
 }
 
