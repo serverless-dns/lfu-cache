@@ -1,0 +1,99 @@
+name: 🎯 Perf
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ds/**'
+      - 'strat/**'
+      - 'test/**'
+
+  workflow_dispatch:
+    inputs:
+      git-ref:
+        description: "git tip: branch/ref/tag"
+        required: false
+        default: 'main'
+      # docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onworkflow_dispatchinputs
+      js-runtime:
+        description: "proc: deno/node"
+        required: false
+        default: 'node'
+        type: choice
+        options:
+        - node
+        - deno
+      maxtime:
+        description: "run time per profile (in seconds)"
+        required: false
+        default: '120s'
+
+env:
+  GIT_REF: ${{ github.event.inputs.git-ref || github.ref }}
+  JS_RUNTIME: 'node'
+  MAXTIME_SEC: '120s'
+  NODE_VER: '17.x'
+
+jobs:
+  profiler1:
+    name: Lfu Perf
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ env.GIT_REF }}
+
+      - name: Set runtime
+        run: |
+          echo "JS_RUNTIME=${JSR}" >> $GITHUB_ENV
+        shell: bash
+        env:
+          JSR: ${{ github.event.inputs.js-runtime || env.JS_RUNTIME }}
+
+      # docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs-or-python
+      - name: Install Node @v17
+        if: env.JS_RUNTIME == 'node'
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ env.NODE_VER }}
+
+      # deno.com/blog/deploy-static-files#example-a-statically-generated-site
+      - name: Install Deno @1.18.2
+        if: env.JS_RUNTIME == 'deno'
+        uses: denoland/setup-deno@main
+        with:
+          deno-version: 1.18.2
+
+      - name: Setup Node
+        if: env.JS_RUNTIME == 'node'
+        run: |
+          npm i && npm run build --if-present
+
+      # docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-using-a-fallback-value
+      # timeout exit-code: stackoverflow.com/a/60996259
+      - name: Sanity
+        if: success()
+        run: |
+          timeout "$MAXTIME_SEC" "$JS_RUNTIME ./test/lfu-test.js" || ( [[ $? -eq 124 ]] && echo "::notice::Timeout OK" )
+        shell: bash
+        env:
+          MAXTIME_SEC: ${{ github.event.inputs.maxtime || env.MAXTIME_SEC }}
+
+      - name: DS Perf
+        if: success()
+        run: |
+          timeout "$MAXTIME_SEC" "$JS_RUNTIME ./test/ds-perf.js" || ( [[ $? -eq 124 ]] && echo "::notice::Timeout OK" )
+        shell: bash
+        env:
+          MAXTIME_SEC: ${{ github.event.inputs.maxtime || env.MAXTIME_SEC }}
+
+      - name: Strat Perf
+        if: success()
+        run: |
+          timeout "$MAXTIME_SEC" "$JS_RUNTIME ./test/strat-perf.js" || ( [[ $? -eq 124 ]] && echo "::notice::Timeout OK" )
+        shell: bash
+        env:
+          MAXTIME_SEC: ${{ github.event.inputs.maxtime || env.MAXTIME_SEC }}
