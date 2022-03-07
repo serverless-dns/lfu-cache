@@ -126,7 +126,7 @@ export class RangeList {
         this.avgGetIter =
           this.avgGetIter > 0 ? Math.round((this.avgGetIter + c) / 2) : c;
         // returns [ans-node, iter-position]
-        return cur === this.tail ? [null, cur] : [cur, node];
+        return cur === this.tail ? [null, node] : [cur, node];
       } else if (lt) {
         // for the next iteration, lookup siblings of cur
         node = cur;
