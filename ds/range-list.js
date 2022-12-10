@@ -164,10 +164,9 @@ export class RangeList {
   // any lower common ancestor of node and n, a number;
   // such that node's range (lo, hi) is _immediately_ less than n
   lca(node, n) {
-    if (node == null) return this.head;
-
     // keep iterating backwards, till node.range is <= n
     do {
+      if (node == null) return this.head;
       if (nodeLessThanN(node, n)) break;
       node = node.prev[node.prev.length - 1];
     } while (node !== this.head);
