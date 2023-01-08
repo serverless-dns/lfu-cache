@@ -28,8 +28,8 @@ on:
 env:
   GIT_REF: ${{ github.event.inputs.git-ref || github.ref }}
   JS_RUNTIME: 'node'
-  NODE_VER: '17.x'
-  DENO_VER: '1.18.2'
+  NODE_VER: '19.x'
+  DENO_VER: '1.29.2'
 
 jobs:
   lfu-perf:
@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ env.GIT_REF }}
 
@@ -51,14 +51,14 @@ jobs:
           JSR: ${{ github.event.inputs.js-runtime || env.JS_RUNTIME }}
 
       # docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs-or-python
-      - name: Install Node @v17
+      - name: Install Node @v19
         if: env.JS_RUNTIME == 'node'
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: ${{ env.NODE_VER }}
 
       # deno.com/blog/deploy-static-files#example-a-statically-generated-site
-      - name: Install Deno @1.18
+      - name: Install Deno @1.29
         if: env.JS_RUNTIME == 'deno'
         uses: denoland/setup-deno@main
         with:
