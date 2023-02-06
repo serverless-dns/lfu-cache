@@ -117,7 +117,7 @@ export class O1 {
     return this.link(q, node);
   }
 
-  // push adds k to the front of freqslot queue, f
+  // push adds node to the front of freqslot queue, f
   push(f, node) {
     const c = this.bound(f - 1, 0, this.maxfrequency);
     // c may be equal to f, in that case, node is moved to the front
@@ -139,6 +139,8 @@ export class O1 {
   delink(node) {
     node.next.prev = node.prev;
     node.prev.next = node.next;
+    node.next = null;
+    node.prev = null;
     return node;
   }
 
