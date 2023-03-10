@@ -112,9 +112,9 @@ export class O1 {
 
   // moves node from its current freqslot queue to the front of freqslot, f
   move(f, node) {
-    this.delink(node);
     const c = this.bound(f - 1, 0, this.maxfrequency);
     const q = this.freqslots[c];
+    this.delink(q, node);
     return this.link(q, node);
   }
 
@@ -133,12 +133,13 @@ export class O1 {
     const lastnode = q.tail.prev;
     // tail points to head, ie zero nodes
     if (lastnode === q.head) return null;
-    return this.delink(lastnode);
+    return this.delink(q, lastnode);
   }
 
   // deletes node from its current freqslot queue
-  delink(node) {
+  delink(q, node) {
     if (q.head === node || q.tail === node) return null;
+    if (node.next == null || node.prev == null) return null;
     node.next.prev = node.prev;
     node.prev.next = node.next;
     node.next = null;
@@ -148,10 +149,13 @@ export class O1 {
 
   // inserts node to the head of the freqslot queue, q
   link(q, node) {
+    const second = q.head.next;
     node.prev = q.head;
-    node.next = q.head.next;
-    q.head.next.prev = node;
+    node.next = second;
     q.head.next = node;
+    if (second != null) {
+      second.prev = node;
+    }
     return node;
   }
 
