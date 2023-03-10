@@ -67,7 +67,7 @@ jobs:
       - name: Setup Node
         if: env.JS_RUNTIME == 'node'
         run: |
-          echo "JS_RUNTIME=${JSR} --max-old-space-size=8000" >> $GITHUB_ENV
+          echo "JS_RUNTIME=${JS_RUNTIME} --max-old-space-size=8000" >> $GITHUB_ENV
           npm i && npm run build --if-present
 
       # docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#example-using-a-fallback-value
