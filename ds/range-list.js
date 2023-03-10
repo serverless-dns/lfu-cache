@@ -13,9 +13,12 @@
 // operation. Ranges can be of arbitary spawns, with (min, max) =>
 // (Number.MIN_SAFE_INTEGER + 2, Number.MAX_SAFE_INTEGER - 2)
 // refs: archive.is/nl3G8 archive.is/ffCDr
+
 export class RangeList {
   constructor(maxlevel = 16) {
     this.maxlevel = Math.round(maxlevel);
+    // threshold for iteration on searches
+    this.maxiters = this.maxlevel ** 2;
 
     this.init();
 
@@ -133,8 +136,10 @@ export class RangeList {
       } else if (gt) {
         // for the next iteration, lookup siblings of node
         i -= 1;
+      } else if (c > this.maxiters) {
+        throw new Error(`get fail: maxiters exceeded ${c}`);
       } else {
-        throw new Error("get fail: is n a number?", n);
+        throw new Error(`get fail: is n a number? ${n}`);
       }
     }
 
@@ -164,11 +169,13 @@ export class RangeList {
   // any lower common ancestor of node and n, a number;
   // such that node's range (lo, hi) is _immediately_ less than n
   lca(node, n) {
+    let c = 0;
     // keep iterating backwards, till node.range is <= n
     do {
-      if (node == null) return this.head;
+      if (node == null || c > this.maxiters) return this.head;
       if (nodeLessThanN(node, n)) break;
       node = node.prev[node.prev.length - 1];
+      c += 1;
     } while (node !== this.head);
 
     return node; // may be tail, in which case, there's no lca
