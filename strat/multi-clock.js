@@ -65,11 +65,13 @@ export class MultiClock {
   }
 
   mkclock() {
+    const sklevel = log2(this.clockcap);
+
     return new Clock(
       this.clockcap,
       this.slotsperhand,
       this.maxlife,
-      this.store()
+      this.store(sklevel)
     );
   }
 
@@ -191,6 +193,10 @@ function mkcursor(_, value) {
 
 function multipleofn(i, n) {
   return i + (n - (i % n));
+}
+
+function log2(n) {
+  return Math.round(Math.log2(n));
 }
 
 function logd(...rest) {

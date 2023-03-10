@@ -33,7 +33,8 @@ export class O1 {
     // max no. of freqslots
     this.maxfrequency = this.bound(opts.freq, minfreq, maxfreq);
     // stores cached values
-    this.store = opts.store();
+    const sklevel = log2(this.capacity);
+    this.store = opts.store(sklevel);
     // tracks all cached entries of a particular age in a doubly linked-list
     this.freqslots = this.mkfreqslots();
 
@@ -137,6 +138,7 @@ export class O1 {
 
   // deletes node from its current freqslot queue
   delink(node) {
+    if (q.head === node || q.tail === node) return null;
     node.next.prev = node.prev;
     node.prev.next = node.next;
     node.next = null;
@@ -210,6 +212,10 @@ function mkcursor(snode, value) {
     value: value, // may be null
     cursor: snode, // never null
   };
+}
+
+function log2(n) {
+  return Math.round(Math.log2(n));
 }
 
 function logd(...rest) {

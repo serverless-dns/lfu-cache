@@ -62,12 +62,11 @@ export class ClockLfu {
 export class RangeLfu {
   constructor(id, capacity) {
     this.id = id;
-    const sklevel = log2(capacity);
 
     this.cache = new O1({
       cap: capacity,
       freq: 16,
-      store: () => new RangeList(sklevel),
+      store: (lvl) => new RangeList(lvl),
     });
   }
 
@@ -98,12 +97,11 @@ export class RangeClockLfu {
     // to user requested capacity itself. Each clock is backed
     // by exactly one skip-list, which means it is of the exact
     // same capacity as the Clock that contains it.
-    const sklevel = log2(capacity);
 
     this.id = id;
     this.cache = new MultiClock({
       cap: capacity,
-      store: () => new RangeList(sklevel),
+      store: (lvl) => new RangeList(lvl),
     });
   }
 
@@ -118,8 +116,4 @@ export class RangeClockLfu {
   find(n, cursor, freq = 1) {
     return this.cache.search(mkrange(n, n), cursor, freq);
   }
-}
-
-function log2(n) {
-  return Math.round(Math.log2(n));
 }
