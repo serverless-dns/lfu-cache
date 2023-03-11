@@ -202,6 +202,17 @@ export class RangeList {
     this.init();
   }
 
+  stats() {
+    return `
+      length: ${this.length},
+      level: ${this.level},
+      maxflips: ${this.maxflips},
+      maxiters: ${this.maxiters},
+      avgGetIter: ${this.avgGetIter},
+      levelhisto: ${this.levelhisto},
+    `;
+  }
+
   mkhead() {
     const minr = mkrange(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER + 1);
     return mknode(minr, "head");
