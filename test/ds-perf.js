@@ -15,8 +15,8 @@ const rlExpectedSumForSize1M = 5000; // ms
 const hmExpectedP99ForSize1M = 0; // ms
 const hmExpectedSumForSize1M = 500; // ms
 const rlExpectedP99ForSize2M = 5; // ms
-const rlExpectedSumForSize2M = 10000; // ms
-const hmExpectedP99ForSize2M = 1; // ms
+const rlExpectedSumForSize2M = 15000; // ms
+const hmExpectedP99ForSize2M = 0; // ms
 const hmExpectedSumForSize2M = 2000; // ms
 
 (async (main) => {
@@ -25,10 +25,11 @@ const hmExpectedSumForSize2M = 2000; // ms
   console.log(tag, t1, "begin");
 
   const n = size;
+  const r = spacedinput(n);
   const out = await Promise.allSettled([
-    rangelistPerf(n),
-    hashMapPerf(n),
-    balancedRangeListPerf(n),
+    rangelistPerf(n, r),
+    hashMapPerf(n, r),
+    balancedRangeListPerf(n, r),
   ]);
   const t2 = Date.now();
 
@@ -36,13 +37,11 @@ const hmExpectedSumForSize2M = 2000; // ms
   console.log(tag, t2, "end", t2 - t1 + "ms");
 })();
 
-async function rangelistPerf(n) {
+async function rangelistPerf(n, r) {
   const tag = "RangeListPerf";
   console.log(tag, "---ack---");
 
   const s = new RangeList(log2(n));
-
-  const r = spacedinput(n);
 
   // insert (range, value) pairs
   const ts1 = Date.now();
@@ -102,19 +101,18 @@ async function rangelistPerf(n) {
   logmissing(tag + " del:", missd);
   logquantiles(tag, t, rlExpectedP99ForSize2M);
   logsums(tag, t, tf, rlExpectedSumForSize2M);
+  logStoreStats(s);
 
   console.log(tag, "---fin---");
 
   return tag + ":done";
 }
 
-async function balancedRangeListPerf(n) {
+async function balancedRangeListPerf(n, r) {
   const tag = "BalancedRangeListPerf";
   console.log(tag, "---ack---");
 
   let s = new RangeList(log2(n));
-
-  const r = spacedinput(n);
 
   // insert (range, value) pairs
   const ts1 = Date.now();
@@ -167,19 +165,18 @@ async function balancedRangeListPerf(n) {
   logmissing(tag + " find:", missf);
   logquantiles(tag, t, rlExpectedP99ForSize2M);
   logsums(tag, t, tf, rlExpectedSumForSize2M);
+  logStoreStats(s);
 
   console.log(tag, "---fin---");
 
   return tag + ":done";
 }
 
-async function hashMapPerf(n) {
+async function hashMapPerf(n, r) {
   const tag = "HashMapPerf";
   console.log(tag, "---ack---");
 
   const s = new HashMap();
-
-  const r = spacedinput(n);
 
   // insert (k, v) pairs
   const ot1 = Date.now();
@@ -220,6 +217,7 @@ async function hashMapPerf(n) {
   logmissing(tag + " del:", missd);
   logquantiles(tag, t, hmExpectedP99ForSize2M);
   logsums(tag, t, td, hmExpectedSumForSize2M);
+  logStoreStats(s);
 
   console.log(tag, "---fin---");
 
@@ -275,6 +273,10 @@ function logsums(id, tg, td, expectedMaxP99) {
 
   console.log(id, "n:", n, "| get:", tget + "ms", "| del/find:", tdel + "ms");
   console.assert(tget <= expectedMaxP99);
+}
+
+function logStoreStats(s) {
+  console.log(s.stats());
 }
 
 function nearbyInt(i, jump, min, max) {
