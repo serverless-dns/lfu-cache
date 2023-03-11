@@ -46,6 +46,7 @@ export class RangeList {
     // stats
     this.levelhisto = new Array(this.maxlevel);
     this.levelhisto.fill(0);
+    this.iterhisto = [];
     this.avgGetIter = 0;
   }
 
@@ -131,6 +132,7 @@ export class RangeList {
         // exclude tail, not a valid search result
         this.avgGetIter =
           this.avgGetIter > 0 ? Math.round((this.avgGetIter + c) / 2) : c;
+        this.iterhisto[c] = (this.iterhisto[c] | 0) + 1;
         // returns [ans-node, iter-position]
         return cur === this.tail ? [null, node] : [cur, node];
       } else if (lt) {
@@ -203,14 +205,13 @@ export class RangeList {
   }
 
   stats() {
-    return `
-      length: ${this.length},
+    return `length: ${this.length},
       level: ${this.level},
       maxflips: ${this.maxflips},
       maxiters: ${this.maxiters},
       avgGetIter: ${this.avgGetIter},
-      levelhisto: ${this.levelhisto},
-    `;
+      iterhisto: ${this.iterhisto},
+      levelhisto: ${this.levelhisto}`;
   }
 
   mkhead() {
