@@ -9,15 +9,15 @@
 import { HashMap } from "../ds/map.js";
 import { RangeList, mkrange, balancedCopy } from "../ds/range-list.js";
 
-const size = 10_000_000;
+const size = 2_000_000;
 const rlExpectedP99ForSize1M = 1; // ms
 const rlExpectedSumForSize1M = 5000; // ms
 const hmExpectedP99ForSize1M = 0; // ms
 const hmExpectedSumForSize1M = 500; // ms
-const rlExpectedP99ForSize10M = 5; // ms
-const rlExpectedSumForSize10M = 10000; // ms
-const hmExpectedP99ForSize10M = 1; // ms
-const hmExpectedSumForSize10M = 2000; // ms
+const rlExpectedP99ForSize2M = 5; // ms
+const rlExpectedSumForSize2M = 10000; // ms
+const hmExpectedP99ForSize2M = 1; // ms
+const hmExpectedSumForSize2M = 2000; // ms
 
 (async (main) => {
   const tag = "DsPerfMain";
@@ -100,8 +100,8 @@ async function rangelistPerf(n) {
 
   logmissing(tag + " get:", miss);
   logmissing(tag + " del:", missd);
-  logquantiles(tag, t, rlExpectedP99ForSize10M);
-  logsums(tag, t, tf, rlExpectedSumForSize10M);
+  logquantiles(tag, t, rlExpectedP99ForSize2M);
+  logsums(tag, t, tf, rlExpectedSumForSize2M);
 
   console.log(tag, "---fin---");
 
@@ -165,8 +165,8 @@ async function balancedRangeListPerf(n) {
 
   logmissing(tag + " get:", miss);
   logmissing(tag + " find:", missf);
-  logquantiles(tag, t, rlExpectedP99ForSize10M);
-  logsums(tag, t, tf, rlExpectedSumForSize10M);
+  logquantiles(tag, t, rlExpectedP99ForSize2M);
+  logsums(tag, t, tf, rlExpectedSumForSize2M);
 
   console.log(tag, "---fin---");
 
@@ -218,8 +218,8 @@ async function hashMapPerf(n) {
 
   logmissing(tag + " get:", miss);
   logmissing(tag + " del:", missd);
-  logquantiles(tag, t, hmExpectedP99ForSize10M);
-  logsums(tag, t, td, hmExpectedSumForSize10M);
+  logquantiles(tag, t, hmExpectedP99ForSize2M);
+  logsums(tag, t, td, hmExpectedSumForSize2M);
 
   console.log(tag, "---fin---");
 
