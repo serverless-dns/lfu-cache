@@ -115,6 +115,9 @@ export class RangeList {
     let c = 0;
     let i = node.next.length - 1;
     while (i >= 0 && node !== this.tail) {
+      if (c > this.maxiters) {
+        throw new Error(`get fail: maxiters exceeded ${c}`);
+      }
       c += 1;
       const cur = node.next[i];
       const eq = nodeContainsN(cur, n);
@@ -136,8 +139,6 @@ export class RangeList {
       } else if (gt) {
         // for the next iteration, lookup siblings of node
         i -= 1;
-      } else if (c > this.maxiters) {
-        throw new Error(`get fail: maxiters exceeded ${c}`);
       } else {
         throw new Error(`get fail: is n a number? ${n}`);
       }

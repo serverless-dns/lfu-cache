@@ -31,6 +31,10 @@ export class HashMap {
     this.m.clear();
   }
 
+  stats() {
+    return "no stats";
+  }
+
   entries() {
     return this.m.entries();
   }
