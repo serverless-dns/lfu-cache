@@ -139,9 +139,12 @@ export class O1 {
   // deletes node from its current freqslot queue
   delink(q, node) {
     if (q.head === node || q.tail === node) return null;
-    if (node.next == null || node.prev == null) return null;
-    node.next.prev = node.prev;
-    node.prev.next = node.next;
+    if (node.next != null) {
+      node.next.prev = node.prev;
+    }
+    if (node.prev != null) {
+      node.prev.next = node.next;
+    }
     node.next = null;
     node.prev = null;
     return node;
@@ -179,7 +182,7 @@ export class O1 {
     return slots;
   }
 
-  // bound clamps n within [min, max)
+  // bound clamps n within (min, max]
   bound(n, min, max) {
     if (n < min) return min;
     if (n >= max) return max - 1;
