@@ -46,7 +46,7 @@ export class RangeList {
     // stats
     this.levelhisto = new Array(this.maxlevel);
     this.levelhisto.fill(0);
-    this.iterhisto = [];
+    this.iterhisto = [0];
     this.avgGetIter = 0;
   }
 
