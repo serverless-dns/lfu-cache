@@ -1,4 +1,4 @@
-Least Frequently Used cache implementations.
+*Least Frequently Used* cache.
 
 `/strat` contains an approximate implementation of the _Clock_ algorithm, which increments
 frequency on cache-hits and decrements frequency of items in the same 'clock' where a newer
@@ -26,3 +26,7 @@ for point queries (takes ~500ms for 1M point-queries), or by `RangeList` for ran
   rgcache.put(1, 10, "a") // (1, 10) -> "a"
   const v = rgcache.get(5) // v = "a"
 ````
+
+> All caches are magic. Knowing their mechanism is not enough to predict their outcome.
+>
+> \- [Avery Pennarun](https://apenwarr.ca/log/20230415).
