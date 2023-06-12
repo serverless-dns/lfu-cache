@@ -160,7 +160,8 @@ export class Clock {
   // search searches for key k, starting at cursor _
   search(k, _, c = 1) {
     const v = this.val(k, c);
-    return mkcursor(null, v);
+    // no cursor in Clocks
+    return [_, v];
   }
 
   entries() {
@@ -189,13 +190,6 @@ export class Clock {
   mkvalue(v, p) {
     return { value: v, pos: p };
   }
-}
-
-function mkcursor(_, value) {
-  return {
-    value: value,
-    cursor: _, // no cursor in clocks
-  };
 }
 
 function logd(...rest) {

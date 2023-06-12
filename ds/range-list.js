@@ -6,18 +6,25 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-// RangeList stores values against integer-ranges (low, high). Sorts
-// incoming ranges in a skip-list. The incoming ranges must not overlap
-// with any existing range already in the skip-list: That is, inserting
-// (5, 15) or (7, 9) in a list with (1, 10) already in it, is undefined,
-// operation. Ranges can be of arbitary spawns, with (min, max) =>
-// (Number.MIN_SAFE_INTEGER + 2, Number.MAX_SAFE_INTEGER - 2)
-// refs: archive.is/nl3G8 archive.is/ffCDr
-
+/**
+ * RangeList stores values against integer-ranges (low, high). Sorts
+ * incoming ranges in a skip-list. The incoming ranges must not overlap
+ * with any existing range already in the skip-list: That is, inserting
+ * (5, 15) or (7, 9) in a list with (1, 10) already in it, is undefined,
+ * operation. Ranges can be of arbitary spawns, with (min, max) =>
+ * (Number.MIN_SAFE_INTEGER + 2, Number.MAX_SAFE_INTEGER - 2)
+ * refs: archive.is/nl3G8 archive.is/ffCDr
+ *
+ * @implements {Store<K, V>}
+ * @template K, V
+ */
 export class RangeList {
   constructor(maxlevel = 16) {
+    /** @type {number} */
     this.maxlevel = Math.round(maxlevel);
+
     // threshold for iteration on searches
+    /** @type {number} */
     this.maxiters = this.maxlevel ** 2;
 
     this.init();
@@ -25,8 +32,13 @@ export class RangeList {
     // if this.maxlevel = 16 (0x10), then:
     // maxflips = 0x8000 or 0b1000_0000_0000 (= 2**15)
     // bitmask => 0x4000 or 0b0100_0000_0000 (= 2**14)
+    /** @type {number} */
     this.maxflips = Math.pow(2, this.maxlevel - 1);
+    /** @type {number} */
     this.bitmask = Math.pow(2, this.maxlevel - 2);
+
+    this.level = 0;
+    this.len = 0;
 
     logd("lvl", this.maxlevel, "h/t", this.head.range, this.tail.range);
   }
@@ -41,7 +53,7 @@ export class RangeList {
     this.tail.prev[0] = this.head;
 
     this.level = 0;
-    this.length = 0;
+    this.len = 0;
 
     // stats
     this.levelhisto = new Array(this.maxlevel);
@@ -50,16 +62,22 @@ export class RangeList {
     this.avgGetIter = 0;
   }
 
-  // FIXME: reject overlapping ranges
+  /**
+   * @param {Range} range
+   * @param {V} aux
+   * @param {boolean} selfcorrect
+   * @returns {RangeList}
+   */
   set(range, aux, selfcorrect = false) {
-    const node = mknode(range, aux);
+    // FIXME: reject overlapping ranges
+    const node = new Node(range, aux);
     const lr = this.randomLevel(selfcorrect);
     let cur = this.head;
     const slots = [];
     // find slots at all levels to fit the incoming node in
     for (let i = this.level, j = 0; i >= 0; i--, j++) {
       // stop before the first slot greater than node.range
-      while (lowl(cur.next[i], node)) cur = cur.next[i];
+      while (cur.next[i].isLessThan(node)) cur = cur.next[i];
 
       slots[j] = cur;
     }
@@ -96,22 +114,42 @@ export class RangeList {
       this.levelhisto[i] += 1;
     }
 
-    this.length += 1;
+    this.len += 1;
+    return this;
   }
 
-  // get gets the value stored against an integer range (lo, hi)
+  /**
+   * get gets the value stored against an integer range (lo, hi)
+   * @param {Range} range
+   * @returns {V?}
+   * @throws {Error} if maxiters is exceeded or if range is invalid
+   */
   get(range) {
     const d = this.xget(range.lo, this.head);
-    if (d[0] == null || d[0].value == null) return null;
+    if (d[0] == null) return null;
     return d[0].value;
   }
 
-  // search searches for key k, starting at cursor, cursornode
+  /**
+   * search searches for key k, starting at cursor, cursornode
+   * @param {Range} range
+   * @param {Node<V>} cursornode
+   * @returns {[V?, Node<V>]}
+   * @throws {Error} if maxiters is exceeded or if range is invalid
+   */
   search(range, cursornode) {
-    return this.xget(range.lo, this.lca(cursornode, range.lo));
+    const [node, cursor] = this.xget(range.lo, this.lca(cursornode, range.lo));
+    if (node == null) return [null, cursor];
+    else return [node.value, cursor];
   }
 
-  // xget gets the skip-list node that has integer 'n' in its range
+  /**
+   * xget gets the skip-list node that has integer 'n' in its range
+   * @param {number} n
+   * @param {Node<V>} node
+   * @returns {[Node<V>?, Node<V>]}
+   * @throws {Error} if maxiters is exceeded or if n is not a number
+   */
   xget(n, node) {
     let c = 0;
     let i = node.next.length - 1;
@@ -121,11 +159,11 @@ export class RangeList {
       }
       c += 1;
       const cur = node.next[i];
-      const eq = nodeContainsN(cur, n);
-      const lt = nodeLessThanN(cur, n);
-      const gt = nodeGreaterThanN(cur, n);
+      const eq = cur.contains(n);
+      const lt = cur.lesser(n);
+      const gt = cur.greater(n);
 
-      logd("get i/n/cur/<w>/lt/gt", i, n, cur, eq, lt, gt);
+      logd("get node i/n/cur/<w>/lt/gt", node, i, n, cur, eq, lt, gt);
 
       if (eq) {
         // cur is the ans, if it is not the tail node
@@ -150,6 +188,10 @@ export class RangeList {
     return [null, node];
   }
 
+  /**
+   * @param {Range} range
+   * @returns {boolean}
+   */
   delete(range) {
     const res = this.xget(range.lo, this.head);
     const node = res[0];
@@ -164,19 +206,24 @@ export class RangeList {
       successor.prev[i] = predecessor;
     }
 
-    this.length -= 1;
+    this.len -= 1;
 
     return true;
   }
 
-  // any lower common ancestor of node and n, a number;
-  // such that node's range (lo, hi) is _immediately_ less than n
+  /**
+   * any lower common ancestor of node and n, a number;
+   * such that node's range (lo, hi) is _immediately_ less than n
+   * @param {Node<V>} node
+   * @param {number} n
+   * @returns {Node<V>}
+   */
   lca(node, n) {
     let c = 0;
     // keep iterating backwards, till node.range is <= n
     do {
       if (node == null || c > this.maxiters) return this.head;
-      if (nodeLessThanN(node, n)) break;
+      if (node.lesser(n)) break;
       node = node.prev[node.prev.length - 1];
       c += 1;
     } while (node !== this.head);
@@ -197,7 +244,7 @@ export class RangeList {
   }
 
   size() {
-    return this.length;
+    return this.len;
   }
 
   clear() {
@@ -205,7 +252,7 @@ export class RangeList {
   }
 
   stats() {
-    return `length: ${this.length},
+    return `length: ${this.len},
       level: ${this.level},
       maxflips: ${this.maxflips},
       maxiters: ${this.maxiters},
@@ -216,15 +263,15 @@ export class RangeList {
 
   mkhead() {
     const minr = mkrange(Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER + 1);
-    return mknode(minr, "head");
+    return new Node(minr, "__head__");
   }
 
   mktail() {
     const maxr = mkrange(Number.MAX_SAFE_INTEGER - 1, Number.MAX_SAFE_INTEGER);
-    return mknode(maxr, "tail");
+    return new Node(maxr, "__tail__");
   }
 
-  randomLevel(selfcorrect) {
+  randomLevel(selfcorrect = false) {
     const cal = selfcorrect ? this.levelup() : -1;
     if (cal >= 0) return cal;
 
@@ -263,7 +310,7 @@ export class RangeList {
       // number of nodes that level i
       const n = this.levelhisto[i - 1] - sum;
       // expected number of nodes at level i, given len of the skip-list
-      const exl = Math.round(2 ** -i * this.length);
+      const exl = Math.round(2 ** -i * this.len);
       const diff = exl - n;
       if (diff > maxdiff) {
         maxdiff = diff;
@@ -279,41 +326,79 @@ export class RangeList {
   }
 }
 
+/**
+ * @template V
+ */
+export class Node {
+  /**
+   * @param {Range} range
+   * @param {V} data
+   */
+  constructor(range, data) {
+    /** @type {Range} */
+    this.range = range;
+    /** @type {V} */
+    this.value = data;
+    /** @type {Node<V>[]} */
+    this.next = [];
+    /** @type {Node<V>[]} */
+    this.prev = [];
+  }
+
+  /**
+   * @param {Node<V>} other
+   * @returns {boolean}
+   */
+  isLessThan(other) {
+    return this.range.hi < other.range.lo;
+  }
+
+  /**
+   * @param {number} n
+   * @returns {boolean}
+   */
+  contains(n) {
+    return n <= this.range.hi && n >= this.range.lo;
+  }
+
+  /**
+   * @param {number} n
+   * @returns {boolean}
+   */
+  greater(n) {
+    return this.range.hi > n;
+  }
+
+  /**
+   * @param {number} n
+   * @returns {boolean}
+   */
+  lesser(n) {
+    return this.range.hi < n;
+  }
+}
+
+export class Range {
+  constructor(lo, hi) {
+    /** @type {number} */
+    this.lo = lo;
+    /** @type {number} */
+    this.hi = hi;
+  }
+}
+
+/**
+ * @param {number} lo
+ * @param {number} hi
+ * @returns {Range}
+ */
 export function mkrange(lo, hi) {
-  return {
-    lo: lo,
-    hi: hi,
-  };
-}
-
-function lowl(left, right) {
-  return left.range.hi < right.range.lo;
-}
-
-function mknode(range, data) {
-  return {
-    range: range,
-    value: data,
-    next: [],
-    prev: [],
-  };
-}
-
-function nodeContainsN(node, n) {
-  return n <= node.range.hi && n >= node.range.lo;
-}
-
-function nodeGreaterThanN(node, n) {
-  return node.range.hi > n;
-}
-
-function nodeLessThanN(node, n) {
-  return node.range.hi < n;
+  return new Range(lo, hi);
 }
 
 // a perfectly-balanced clone just like Thanos would want it
 export function balancedCopy(other) {
-  const s = new RangeList(Math.log2(other.length));
+  const s = new RangeList(Math.log2(other.len));
   let it = other.head.next[0];
   while (it !== other.tail) {
     // ref archive.is/kwhnG

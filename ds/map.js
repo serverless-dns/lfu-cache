@@ -6,6 +6,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+// impl is not checked for interface violation
+// github.com/microsoft/TypeScript/issues/30156
+/**
+ * @implements {Store<K, V>}
+ */
 export class HashMap {
   constructor() {
     this.m = new Map();
@@ -24,7 +29,7 @@ export class HashMap {
   }
 
   search(k, _) {
-    return this.m.get(k);
+    return [this.m.get(k), _];
   }
 
   clear() {

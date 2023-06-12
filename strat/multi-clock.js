@@ -107,7 +107,8 @@ export class MultiClock {
   // search searches for key k, starting at cursor _
   search(k, _, c = 1) {
     const v = this.val(k, c);
-    return mkcursor(null, v);
+    // cursor _ is unused in Clocks
+    return [_, v];
   }
 
   put(k, v, c = 1) {
@@ -182,13 +183,6 @@ export class MultiClock {
 
     return rand % len === 0 ? y : n;
   }
-}
-
-function mkcursor(_, value) {
-  return {
-    value: value,
-    cursor: _, // unused in clocks
-  };
 }
 
 function multipleofn(i, n) {

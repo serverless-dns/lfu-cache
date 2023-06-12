@@ -19,9 +19,14 @@ function defaults() {
   };
 }
 
-// O1 roughly impls an O(1) LFU as described in arxiv.org/pdf/2110.11602.pdf
-// Reminiscent of S4LRU but with var no of LRUs "freqslots" (not limited to 4)
-// news.ycombinator.com/item?id=7692622
+/**
+ * O1 roughly impls an O(1) LFU as described in arxiv.org/pdf/2110.11602.pdf
+ * Reminiscent of S4LRU but with var no of LRUs "freqslots" (not limited to 4)
+ * news.ycombinator.com/item?id=7692622
+ *
+ * @implements {LfuBase<K, V>}
+ * @template K, V
+ */
 export class O1 {
   constructor(overrides) {
     const opts = Object.assign(defaults(), overrides);
@@ -29,19 +34,30 @@ export class O1 {
     if (opts.store == null) throw new Error("missing store");
 
     // max entries in the cache
+    /** @type {number} */
     this.capacity = this.bound(opts.cap, mincap, maxcap);
     // max no. of freqslots
+    /** @type {number} */
     this.maxfrequency = this.bound(opts.freq, minfreq, maxfreq);
     // stores cached values
+    /** @type {number} */
     const sklevel = log2(this.capacity);
+    /** @type {Store<K, Entry<K, V>>} */
     this.store = opts.store(sklevel);
     // tracks all cached entries of a particular age in a doubly linked-list
+    /** @type {QLL<K>[]} */
     this.freqslots = this.mkfreqslots();
 
     logd("created with cap", this.capacity, "freq", this.maxfrequency);
   }
 
-  // put sets value v against key k with frequency f
+  /**
+   * put sets value v against key k with frequency f.
+   * @param {K} k
+   * @param {V} v
+   * @param {number} f
+   * @returns {boolean}
+   */
   put(k, v, f = 1) {
     const cached = this.store.get(k);
     if (cached) {
@@ -71,12 +87,18 @@ export class O1 {
     }
 
     logd("put; new-entry", k, "freq", f);
-    const node = this.push(f, mknode(k));
-    this.store.set(k, mkentry(node, v, f));
+    const node = this.push(f, new LL(k));
+    const entry = new Entry(node, v, f);
+    this.store.set(k, entry);
     return true;
   }
 
-  // val gets cached entry by key k, if any; increments its freq by f
+  /**
+   * val gets cached entry by key k, if any; increments its freq by f.
+   * @param {K} k
+   * @param {number} f
+   * @returns {V | null}
+   */
   val(k, f = 1) {
     const entry = this.store.get(k);
     if (entry) {
@@ -89,36 +111,57 @@ export class O1 {
     return null;
   }
 
-  // search searches for key k, starting at cursor it
+  /**
+   * search searches for key k, starting at cursor it.
+   * @param {K} k
+   * @param {any} it
+   * @param {number} f
+   * @returns {[any, V?]}
+   */
   search(k, it, f = 1) {
     const cursor = it != null ? it.cursor : null;
     const res = this.store.search(k, cursor);
-    const ans = res[0];
-    const cur = res[1];
+    const ans = res[0]; // value
+    const cur = res[1]; // cursor
     if (ans) {
-      const entry = ans.value;
+      const entry = ans;
       logd("search-hit; key:", k, "freq:", entry.freq);
       entry.freq += f;
       this.move(entry.freq, entry.node);
-      return mkcursor(cur, entry.value);
+      return [cur, entry.value];
     }
     logd("search-miss", k);
-    return mkcursor(cur, null);
+    return [cur, null];
   }
 
+  /**
+   * @returns {number}
+   */
   size() {
     return this.store.size();
   }
 
-  // moves node from its current freqslot queue to the front of freqslot, f
+  /**
+   * moves node from its current freqslot queue to the front of freqslot, f.
+   * @param {number} f
+   * @param {LL<K>} node
+   * @returns {boolean}
+   */
   move(f, node) {
-    const c = this.bound(f - 1, 0, this.maxfrequency);
-    const q = this.freqslots[c];
-    this.delink(q, node);
-    return this.link(q, node);
+    if (this.delink(node)) {
+      const c = this.bound(f - 1, 0, this.maxfrequency);
+      const q = this.freqslots[c];
+      return this.link(q, node) != null;
+    }
+    return false;
   }
 
-  // push adds node to the front of freqslot queue, f
+  /**
+   * push adds node to the front of freqslot queue, f.
+   * @param {number} f
+   * @param {LL<K>} node
+   * @returns {LL<K>}
+   */
   push(f, node) {
     const c = this.bound(f - 1, 0, this.maxfrequency);
     // c may be equal to f, in that case, node is moved to the front
@@ -126,63 +169,75 @@ export class O1 {
     return this.link(q, node);
   }
 
-  // pop removes node from the tail of freqslot queue, f
+  /**
+   * pop removes node from the tail of freqslot queue, f.
+   * @param {number} f
+   * @returns {LL<K> | null}
+   */
   pop(f) {
     const c = this.bound(f - 1, 0, this.maxfrequency);
     const q = this.freqslots[c];
     const lastnode = q.tail.prev;
     // tail points to head, ie zero nodes
-    if (lastnode === q.head) return null;
-    return this.delink(q, lastnode);
+    if (q.boundary(lastnode)) return null;
+    return this.delink(lastnode);
   }
 
-  // deletes node from its current freqslot queue
-  delink(q, node) {
-    if (q.head === node || q.tail === node) return null;
-    if (node.next != null) {
-      node.next.prev = node.prev;
-    }
-    if (node.prev != null) {
-      node.prev.next = node.next;
-    }
+  /**
+   * deletes node from its current freqslot queue
+   * @param {QLL<K>} q
+   * @param {LL<K>} node
+   * @returns {LL<K> | null}
+   */
+  delink(node) {
+    if (node.immovable()) return null;
+    if (node.orphaned()) return null;
+
+    node.next.prev = node.prev;
+    node.prev.next = node.next;
+
     node.next = null;
     node.prev = null;
     return node;
   }
 
-  // inserts node to the head of the freqslot queue, q
+  /**
+   * inserts orphaned node to the head of the freqslot queue, q.
+   * @param {QLL<K>} q
+   * @param {LL<K>} node
+   * @returns {LL<K>}
+   */
   link(q, node) {
+    if (node.immovable()) return null;
+    if (!node.orphaned()) return null;
+
     const second = q.head.next;
     node.prev = q.head;
     node.next = second;
     q.head.next = node;
-    if (second != null) {
-      second.prev = node;
-    }
+    second.prev = node;
     return node;
   }
 
-  // mkfreqdll makes a doubly linked list for freqslot queues
-  mkfreqdll() {
-    const h = mkhead();
-    const t = mktail();
-    h.prev = t;
-    h.next = t;
-    t.prev = h;
-    t.next = h;
-    return { head: h, tail: t };
-  }
-
-  // mkfreqslots makes maxfrequency number of freqslot queues
+  /**
+   * mkfreqslots makes maxfrequency number of freqslot queues.
+   */
   mkfreqslots() {
+    /** @type {QLL<K>[]} */
     const slots = new Array(this.maxfrequency);
     for (let i = 0; i < this.maxfrequency; i++) {
-      slots[i] = this.mkfreqdll();
+      slots[i] = new QLL();
     }
     return slots;
   }
 
-  // bound clamps n within (min, max]
+  /**
+   * bound clamps n within (min, max]
+   * @param {number} n
+   * @param {number} min
+   * @param {number} max
+   * @returns {number}
+   */
   bound(n, min, max) {
     if (n < min) return min;
     if (n >= max) return max - 1;
@@ -190,35 +245,74 @@ export class O1 {
   }
 }
 
-function mkhead() {
-  return mknode("head");
+/**
+ * @template K
+ */
+class QLL {
+  constructor() {
+    /** @type {LL<K>} */
+    const h = new LL("__head__");
+    /** @type {LL<K>} */
+    const t = new LL("__tail__");
+    h.prev = t;
+    h.next = t;
+    t.prev = h;
+    t.next = h;
+    /** @type {LL<K>} */
+    this.head = h;
+    /** @type {LL<K>} */
+    this.tail = t;
+  }
+
+  /**
+   * @param {LL<K>} node
+   * @returns {boolean}
+   */
+  boundary(node) {
+    return node === this.head || node === this.tail;
+  }
 }
 
-function mktail() {
-  return mknode("tail");
+/**
+ * @template K
+ */
+class LL {
+  constructor(k) {
+    /** @type {K} */
+    this.key = k;
+    /** @type {LL<K>} */
+    this.next = null;
+    /** @type {LL<K>} */
+    this.prev = null;
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  immovable() {
+    return this.key === "__head__" || this.key === "__tail__";
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  orphaned() {
+    return this.next === null && this.prev === null;
+  }
 }
 
-function mknode(k) {
-  return {
-    next: null,
-    prev: null,
-    key: k,
-  };
-}
-
-function mkentry(n, v, f) {
-  return {
-    node: n,
-    value: v,
-    freq: f,
-  };
-}
-
-function mkcursor(snode, value) {
-  return {
-    value: value, // may be null
-    cursor: snode, // never null
-  };
+/**
+ * @template K, V
+ */
+class Entry {
+  constructor(n, v, f) {
+    /** @type {LL<K>} */
+    this.node = n;
+    /** @type {V} */
+    this.value = v;
+    /** @type {number} */
+    this.freq = f;
+  }
 }
 
 function log2(n) {
